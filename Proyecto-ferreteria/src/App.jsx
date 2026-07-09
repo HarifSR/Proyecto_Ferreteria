@@ -251,11 +251,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-gray-800">
       {/* Navbar */}
-      <div className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md">
-        <span className="text-xl font-bold text-yellow-500">🛠️ FerreSistema Pro</span>
-        <div className="flex space-x-2 bg-slate-800 p-1 rounded-lg">
-          <button onClick={() => setRol('cliente')} className={`px-4 py-1.5 rounded-md text-sm font-medium ${rol === 'cliente' ? 'bg-blue-600 text-white' : 'text-gray-400'}`}>🌐 Caja</button>
-          <button onClick={() => setRol('admin')} className={`px-4 py-1.5 rounded-md text-sm font-medium ${rol === 'admin' ? 'bg-orange-600 text-white' : 'text-gray-400'}`}>🏢 BackOffice</button>
+      <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shadow-md">
+        <span className="brand-mark text-xl font-bold text-yellow-500 tracking-tight">🛠️ FerreSistema Pro</span>
+        <div className="flex space-x-1 bg-slate-800 p-1 rounded-lg">
+          <button onClick={() => setRol('cliente')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition ${rol === 'cliente' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>🧾 Punto de Venta</button>
+          <button onClick={() => setRol('admin')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition ${rol === 'admin' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'}`}>🏢 Administración</button>
         </div>
       </div>
 
@@ -263,30 +263,47 @@ export default function App() {
       {rol === 'cliente' && (
         <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
-            <input type="text" placeholder="🔍 Filtra por nombre..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="w-full p-3 bg-white border rounded-lg shadow-sm" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {productosFiltradosCliente.map(p => (
-                <div key={p.id} className="bg-white p-5 rounded-xl shadow-sm border flex flex-col justify-between">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+              <input type="text" placeholder="Buscar producto por nombre..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="w-full p-3 pl-9 bg-white border rounded-lg shadow-sm" />
+            </div>
+            {productosFiltradosCliente.length === 0 ? (
+              <div className="bg-white border rounded-xl p-10 text-center text-gray-400 text-sm">
+                No encontramos productos con ese nombre. Prueba con otra palabra.
+              </div>
+            ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {productosFiltradosCliente.map(p => {
+                const sinStock = parseFloat(p.cantidad_stock) <= 0;
+                const stockBajo = !sinStock && parseFloat(p.cantidad_stock) < 20;
+                return (
+                <div key={p.id} className="tag-card p-5 flex flex-col justify-between hover:shadow-md transition">
                   <div>
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{p.categoria_nombre || 'General'}</span>
-                      <span className="text-xs font-mono text-gray-400">{p.id}</span>
+                      <span className="sku text-xs text-gray-400">{p.id}</span>
                     </div>
-                    <h3 className="font-bold text-lg mt-2">{p.nombre}</h3>
-                    <p className="text-xs font-bold text-gray-500 mt-1">Disponible: {p.cantidad_stock} {p.unidad_codigo || 'uds'}</p>
+                    <h3 className="font-bold text-lg mt-2 leading-snug">{p.nombre}</h3>
+                    {p.marca && p.marca !== 'Genérica' && <p className="text-xs text-gray-400 mt-0.5">Marca: {p.marca}</p>}
+                    <p className={`text-xs font-bold mt-2 ${sinStock ? 'text-red-500' : stockBajo ? 'text-orange-600' : 'text-gray-500'}`}>
+                      {sinStock ? '⛔ Agotado' : `${parseFloat(p.cantidad_stock)} ${p.unidad_codigo || 'uds'} disponibles`}
+                    </p>
                   </div>
                   <div className="mt-4 flex justify-between items-center">
-                    <span className="text-xl font-black">${parseFloat(p.precio).toFixed(2)}</span>
-                    <button onClick={() => agregarAlCarrito(p)} disabled={p.cantidad_stock <= 0} className="bg-blue-600 text-white text-sm font-semibold px-3 py-2 rounded-lg">🛒 Agregar</button>
+                    <span className="sku text-xl font-black">${parseFloat(p.precio).toFixed(2)}</span>
+                    <button onClick={() => agregarAlCarrito(p)} disabled={sinStock} className="bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-3 py-2 rounded-lg hover:bg-blue-700 transition">
+                      {sinStock ? 'Sin stock' : '🛒 Agregar'}
+                    </button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
+            )}
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-sm border h-fit sticky top-6">
-            <h2 className="text-lg font-bold border-b pb-3">🧾 Factura Actual</h2>
-            {carrito.length === 0 ? <p className="text-center py-8 text-gray-400 text-sm">El carrito está vacío.</p> : (
+            <h2 className="text-lg font-bold border-b pb-3">🧾 Venta en Curso</h2>
+            {carrito.length === 0 ? <p className="text-center py-8 text-gray-400 text-sm">Aún no has agregado productos.<br/>Elige artículos de la lista para comenzar.</p> : (
               <div className="space-y-4 mt-4">
                 {carrito.map(item => (
                   <div key={item.id} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
@@ -295,16 +312,16 @@ export default function App() {
                       <p className="text-xs text-gray-400">${parseFloat(item.precio).toFixed(2)} c/u</p>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <button onClick={() => modificarCantidadCarrito(item.id, -1)} className="bg-gray-200 px-1.5 rounded text-xs">-</button>
+                      <button onClick={() => modificarCantidadCarrito(item.id, -1)} aria-label="Quitar uno" className="bg-gray-200 hover:bg-gray-300 px-1.5 rounded text-xs transition">-</button>
                       <span className="font-bold text-xs w-6 text-center">{item.cantidad}</span>
-                      <button onClick={() => modificarCantidadCarrito(item.id, 1)} className="bg-gray-200 px-1.5 rounded text-xs">+</button>
+                      <button onClick={() => modificarCantidadCarrito(item.id, 1)} aria-label="Agregar uno" className="bg-gray-200 hover:bg-gray-300 px-1.5 rounded text-xs transition">+</button>
                     </div>
                   </div>
                 ))}
                 <div className="pt-3 border-t font-black text-xl flex justify-between">
-                  <span>Total:</span><span>${calcularTotalCarrito()}</span>
+                  <span>Total a Cobrar:</span><span>${calcularTotalCarrito()}</span>
                 </div>
-                <button onClick={procesarFacturacion} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl text-sm">Confirmar Cobro</button>
+                <button onClick={procesarFacturacion} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition">Confirmar Cobro</button>
               </div>
             )}
           </div>
@@ -316,23 +333,33 @@ export default function App() {
         <div className="max-w-7xl mx-auto p-6 space-y-6">
           {!token ? (
             <div className="bg-white p-8 rounded-xl shadow-md border max-w-md mx-auto mt-10">
-              <h2 className="text-xl font-bold text-center mb-4">🔐 Panel Administrativo</h2>
+              <div className="text-center mb-6">
+                <span className="text-3xl">🔐</span>
+                <h2 className="text-xl font-bold mt-2">Acceso Administrativo</h2>
+                <p className="text-xs text-gray-400 mt-1">Ingresa tus credenciales para gestionar el negocio.</p>
+              </div>
               <form onSubmit={manejarLogin} className="space-y-4">
-                <input type="email" placeholder="Correo" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-2.5 border rounded-lg" />
-                <input type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-2.5 border rounded-lg" />
-                <button type="submit" className="w-full bg-orange-600 text-white font-bold py-2.5 rounded-lg">Ingresar</button>
+                <div>
+                  <label className="text-xs font-bold text-gray-500">Correo electrónico</label>
+                  <input type="email" placeholder="tucorreo@ferreteria.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-2.5 border rounded-lg mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500">Contraseña</label>
+                  <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-2.5 border rounded-lg mt-1" />
+                </div>
+                <button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 rounded-lg transition">Ingresar</button>
               </form>
             </div>
           ) : (
             <>
               {/* Menu Subsecciones */}
-              <div className="flex justify-between items-center border-b pb-2">
-                <div className="flex space-x-4">
-                  <button onClick={() => { setSubSeccionAdmin('reportes'); limpiarFormulario(); }} className={`pb-2 font-bold text-sm ${subSeccionAdmin === 'reportes' ? 'border-b-2 border-orange-600 text-orange-600' : 'text-gray-500'}`}>📊 Reportes</button>
-                  <button onClick={() => { setSubSeccionAdmin('ver-inventario'); limpiarFormulario(); }} className={`pb-2 font-bold text-sm ${subSeccionAdmin === 'ver-inventario' ? 'border-b-2 border-orange-600 text-orange-600' : 'text-gray-500'}`}>📋 Inventario</button>
-                  <button onClick={() => setSubSeccionAdmin('nuevo-producto')} className={`pb-2 font-bold text-sm ${subSeccionAdmin === 'nuevo-producto' ? 'border-b-2 border-orange-600 text-orange-600' : 'text-gray-500'}`}>➕ Gestionar Catálogos</button>
+              <div className="flex justify-between items-center border-b pb-3">
+                <div className="flex space-x-1 bg-white border rounded-lg p-1">
+                  <button onClick={() => { setSubSeccionAdmin('reportes'); limpiarFormulario(); }} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'reportes' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📊 Reportes</button>
+                  <button onClick={() => { setSubSeccionAdmin('ver-inventario'); limpiarFormulario(); }} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'ver-inventario' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📋 Inventario</button>
+                  <button onClick={() => setSubSeccionAdmin('nuevo-producto')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>➕ Productos y Catálogos</button>
                 </div>
-                <button onClick={cerrarSesion} className="text-xs text-red-500 font-bold">🔒 Cerrar Sesión</button>
+                <button onClick={cerrarSesion} className="text-xs text-red-500 hover:text-red-700 font-bold transition">🔒 Cerrar Sesión</button>
               </div>
 
               {/* REPORTES DETALLADOS RESTAURADOS */}
@@ -388,34 +415,43 @@ export default function App() {
               {/* INVENTARIO MAESTRO RESTAURADO CON ACCIONES Y EXCEL */}
               {subSeccionAdmin === 'ver-inventario' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <input type="text" placeholder="Filtrar inventario maestro..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} className="p-2 border rounded-lg text-sm w-full max-w-sm" />
-                    <button onClick={exportarAExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition">
-                      📥 Exportar a Excel (CSV)
-                    </button>
+                  <div className="flex justify-between items-center gap-3">
+                    <input type="text" placeholder="Buscar por nombre o código de producto..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} className="p-2.5 border rounded-lg text-sm w-full max-w-sm" />
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => setSubSeccionAdmin('nuevo-producto')} className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition">
+                        ➕ Nuevo Producto
+                      </button>
+                      <button onClick={exportarAExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition">
+                        📥 Exportar a Excel
+                      </button>
+                    </div>
                   </div>
 
                   <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                     <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase">
+                      <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
                         <tr>
-                          <th className="p-4">ID</th>
+                          <th className="p-4">Código</th>
                           <th className="p-4">Producto</th>
+                          <th className="p-4">Marca</th>
                           <th className="p-4">Precio</th>
                           <th className="p-4">Stock</th>
                           <th className="p-4 text-center">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {productosFiltradosAdmin.map(p => (
-                          <tr key={p.id} className="hover:bg-gray-50">
-                            <td className="p-4 font-mono text-gray-400">{p.id}</td>
+                        {productosFiltradosAdmin.length === 0 ? (
+                          <tr><td colSpan={6} className="p-8 text-center text-gray-400">No hay productos que coincidan con tu búsqueda.</td></tr>
+                        ) : productosFiltradosAdmin.map(p => (
+                          <tr key={p.id} className="hover:bg-gray-50 transition">
+                            <td className="p-4 sku text-gray-400">{p.id}</td>
                             <td className="p-4 font-semibold">{p.nombre}</td>
+                            <td className="p-4 text-gray-500">{p.marca || '—'}</td>
                             <td className="p-4 font-bold">${parseFloat(p.precio).toFixed(2)}</td>
-                            <td className="p-4"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.cantidad_stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{p.cantidad_stock} uds</span></td>
+                            <td className="p-4"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.cantidad_stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{parseFloat(p.cantidad_stock)} uds</span></td>
                             <td className="p-4 text-center space-x-2">
                               <button onClick={() => iniciarEdicion(p)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded transition">✏️ Editar</button>
-                              <button onClick={() => manejarEliminarProducto(p.id)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded transition">❌ Borrar</button>
+                              <button onClick={() => manejarEliminarProducto(p.id)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded transition">🗑️ Eliminar</button>
                             </td>
                           </tr>
                         ))}
@@ -431,39 +467,43 @@ export default function App() {
                   
                   {/* Formulario Maestro de Producto */}
                   <div className="lg:col-span-2 bg-white p-6 rounded-xl border shadow-sm">
-                    <div className="flex justify-between items-center mb-4 border-b pb-2">
-                      <h3 className="font-bold text-gray-800">
-                        {modoEdicion ? '✏️ Actualizar Producto Existente' : '📦 Registrar Nuevo Producto'}
-                      </h3>
+                    <div className="flex justify-between items-center mb-4 border-b pb-3">
+                      <div>
+                        <h3 className="font-bold text-gray-800">
+                          {modoEdicion ? '✏️ Actualizar Producto' : '📦 Registrar Nuevo Producto'}
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-0.5">Completa los datos del artículo tal como aparecerán en el inventario.</p>
+                      </div>
                       {modoEdicion && (
-                        <button onClick={limpiarFormulario} className="text-xs text-blue-500 font-bold hover:underline">Cancelar Edición</button>
+                        <button onClick={limpiarFormulario} className="text-xs text-blue-600 font-bold hover:underline shrink-0 ml-4">Cancelar Edición</button>
                       )}
                     </div>
                     
                     <form onSubmit={manejarGuardarProducto} className="space-y-4">
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="text-xs font-bold text-gray-500">ID Único</label>
-                          <input type="text" placeholder="Ej: PL01" value={nuevoProd.id} onChange={(e) => setNuevoProd({...nuevoProd, id: e.target.value})} disabled={modoEdicion} className={`w-full p-2 border rounded ${modoEdicion ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
+                          <label className="text-xs font-bold text-gray-500">Código del Producto</label>
+                          <input type="text" placeholder="Ej: FV117" value={nuevoProd.id} onChange={(e) => setNuevoProd({...nuevoProd, id: e.target.value.toUpperCase()})} disabled={modoEdicion} className={`w-full p-2 border rounded ${modoEdicion ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
+                          {!modoEdicion && <p className="text-[10px] text-gray-400 mt-0.5">Formato: FV + 3 dígitos</p>}
                         </div>
                         <div className="col-span-2">
                           <label className="text-xs font-bold text-gray-500">Nombre del Artículo</label>
-                          <input type="text" value={nuevoProd.nombre} onChange={(e) => setNuevoProd({...nuevoProd, nombre: e.target.value})} className="w-full p-2 border rounded" />
+                          <input type="text" placeholder="Ej: Cemento Progreso 4060 PSI" value={nuevoProd.nombre} onChange={(e) => setNuevoProd({...nuevoProd, nombre: e.target.value})} className="w-full p-2 border rounded" />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-xs font-bold text-gray-500">Categoría Relacionada</label>
+                          <label className="text-xs font-bold text-gray-500">Categoría</label>
                           <select value={nuevoProd.categoria_id} onChange={(e) => setNuevoProd({...nuevoProd, categoria_id: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-sm">
-                            <option value="">-- Selecciona Categoría --</option>
+                            <option value="">-- Selecciona una categoría --</option>
                             {categorias.map(cat => <option key={cat.id} value={cat.id}>{cat.nombre}</option>)}
                           </select>
                         </div>
                         <div>
                           <label className="text-xs font-bold text-gray-500">Unidad de Medida</label>
                           <select value={nuevoProd.unidad_base_id} onChange={(e) => setNuevoProd({...nuevoProd, unidad_base_id: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-sm">
-                            <option value="">-- Selecciona Unidad --</option>
+                            <option value="">-- Selecciona una unidad --</option>
                             {unidades.map(uni => <option key={uni.id} value={uni.id}>{uni.nombre} ({uni.abreviacion})</option>)}
                           </select>
                         </div>
@@ -471,28 +511,28 @@ export default function App() {
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-xs font-bold text-gray-500">Marca</label>
+                          <label className="text-xs font-bold text-gray-500">Marca (opcional)</label>
                           <input type="text" placeholder="Ej: Progreso" value={nuevoProd.marca} onChange={(e) => setNuevoProd({...nuevoProd, marca: e.target.value})} className="w-full p-2 border rounded" />
                         </div>
                         <div>
-                          <label className="text-xs font-bold text-gray-500">Precio Público ($)</label>
-                          <input type="number" step="0.01" value={nuevoProd.precio} onChange={(e) => setNuevoProd({...nuevoProd, precio: e.target.value})} className="w-full p-2 border rounded" />
+                          <label className="text-xs font-bold text-gray-500">Precio de Venta ($)</label>
+                          <input type="number" step="0.01" placeholder="0.00" value={nuevoProd.precio} onChange={(e) => setNuevoProd({...nuevoProd, precio: e.target.value})} className="w-full p-2 border rounded" />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-xs font-bold text-gray-500">Stock {modoEdicion ? 'Actual' : 'Inicial'}</label>
-                          <input type="number" value={nuevoProd.stock} onChange={(e) => setNuevoProd({...nuevoProd, stock: e.target.value})} className="w-full p-2 border rounded" />
+                          <input type="number" placeholder="0" value={nuevoProd.stock} onChange={(e) => setNuevoProd({...nuevoProd, stock: e.target.value})} className="w-full p-2 border rounded" />
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-xs font-bold text-gray-500">Descripción</label>
+                        <label className="text-xs font-bold text-gray-500">Descripción (opcional)</label>
                         <textarea placeholder="Ej: Cemento de 42.5 kg por saco." value={nuevoProd.descripcion} onChange={(e) => setNuevoProd({...nuevoProd, descripcion: e.target.value})} rows={3} className="w-full p-2 border rounded resize-none" />
                       </div>
 
-                      <button type="submit" className={`w-full text-white font-bold py-2 rounded-lg text-sm mt-2 transition ${modoEdicion ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
+                      <button type="submit" className={`w-full text-white font-bold py-2.5 rounded-lg text-sm mt-2 transition ${modoEdicion ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
                         {modoEdicion ? '💾 Guardar Cambios' : '💾 Añadir a Inventario'}
                       </button>
                     </form>
@@ -502,19 +542,21 @@ export default function App() {
                   <div className="space-y-4">
                     <div className="bg-white p-4 rounded-xl border shadow-sm">
                       <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">📁 Nueva Categoría</h4>
+                      <p className="text-[11px] text-gray-400 mb-2">Crea un grupo para organizar tus productos.</p>
                       <form onSubmit={manejarCrearCategoria} className="flex space-x-2">
                         <input type="text" placeholder="Ej: Electricidad" value={nuevaCatNombre} onChange={(e) => setNuevaCatNombre(e.target.value)} className="border p-1.5 rounded text-sm flex-1" />
-                        <button type="submit" className="bg-slate-800 text-white text-xs px-3 rounded font-bold">+</button>
+                        <button type="submit" className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 rounded font-bold transition">+</button>
                       </form>
                     </div>
 
                     <div className="bg-white p-4 rounded-xl border shadow-sm">
-                      <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">📏 Nueva Unidad</h4>
+                      <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">📏 Nueva Unidad de Medida</h4>
+                      <p className="text-[11px] text-gray-400 mb-2">Ej: si vendes por metro, saco o galón.</p>
                       <form onSubmit={manejarCrearUnidad} className="space-y-2">
                         <input type="text" placeholder="Nombre (Ej: Metro)" value={nuevaUniNombre} onChange={(e) => setNuevaUniNombre(e.target.value)} className="w-full border p-1.5 rounded text-sm" />
                         <div className="flex space-x-2">
-                          <input type="text" placeholder="Cód (Ej: M)" value={nuevaUniCodigo} onChange={(e) => setNuevaUniCodigo(e.target.value)} className="border p-1.5 rounded text-sm flex-1 font-mono uppercase" />
-                          <button type="submit" className="bg-slate-800 text-white text-xs px-4 rounded font-bold">Añadir</button>
+                          <input type="text" placeholder="Abreviación (Ej: m)" value={nuevaUniCodigo} onChange={(e) => setNuevaUniCodigo(e.target.value)} className="border p-1.5 rounded text-sm flex-1 font-mono uppercase" />
+                          <button type="submit" className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 rounded font-bold transition">Añadir</button>
                         </div>
                       </form>
                     </div>
@@ -528,4 +570,4 @@ export default function App() {
       )}
     </div>
   );
-} 
+}
