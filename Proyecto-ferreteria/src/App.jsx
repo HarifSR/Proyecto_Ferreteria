@@ -22,7 +22,7 @@ export default function App() {
 
   // Formulario de Producto (Sirve para Crear y Editar)
   const [nuevoProd, setNuevoProd] = useState({ 
-    id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '' 
+    id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '' 
   });
   const [modoEdicion, setModoEdicion] = useState(false);
 
@@ -91,7 +91,9 @@ export default function App() {
       precio: parseFloat(nuevoProd.precio),
       cantidad_stock: parseFloat(nuevoProd.stock) || 0,
       categoria_id: parseInt(nuevoProd.categoria_id) || 1, 
-      unidad_base_id: parseInt(nuevoProd.unidad_base_id) || 1
+      unidad_base_id: parseInt(nuevoProd.unidad_base_id) || 1,
+      marca: nuevoProd.marca || 'Genérica',
+      descripcion: nuevoProd.descripcion || ''
     };
 
     const url = modoEdicion 
@@ -127,14 +129,16 @@ export default function App() {
       precio: producto.precio,
       stock: producto.cantidad_stock,
       categoria_id: producto.categoria_id || '',
-      unidad_base_id: producto.unidad_base_id || ''
+      unidad_base_id: producto.unidad_base_id || '',
+      marca: producto.marca || '',
+      descripcion: producto.descripcion || ''
     });
     setSubSeccionAdmin('nuevo-producto'); // Lleva al usuario al formulario
   };
 
   const limpiarFormulario = () => {
     setModoEdicion(false);
-    setNuevoProd({ id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '' });
+    setNuevoProd({ id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '' });
   };
 
   const manejarEliminarProducto = async (id_producto) => {
@@ -460,20 +464,32 @@ export default function App() {
                           <label className="text-xs font-bold text-gray-500">Unidad de Medida</label>
                           <select value={nuevoProd.unidad_base_id} onChange={(e) => setNuevoProd({...nuevoProd, unidad_base_id: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-sm">
                             <option value="">-- Selecciona Unidad --</option>
-                            {unidades.map(uni => <option key={uni.id} value={uni.id}>{uni.nombre} ({uni.codigo})</option>)}
+                            {unidades.map(uni => <option key={uni.id} value={uni.id}>{uni.nombre} ({uni.abreviacion})</option>)}
                           </select>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
+                          <label className="text-xs font-bold text-gray-500">Marca</label>
+                          <input type="text" placeholder="Ej: Progreso" value={nuevoProd.marca} onChange={(e) => setNuevoProd({...nuevoProd, marca: e.target.value})} className="w-full p-2 border rounded" />
+                        </div>
+                        <div>
                           <label className="text-xs font-bold text-gray-500">Precio Público ($)</label>
                           <input type="number" step="0.01" value={nuevoProd.precio} onChange={(e) => setNuevoProd({...nuevoProd, precio: e.target.value})} className="w-full p-2 border rounded" />
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-xs font-bold text-gray-500">Stock {modoEdicion ? 'Actual' : 'Inicial'}</label>
                           <input type="number" value={nuevoProd.stock} onChange={(e) => setNuevoProd({...nuevoProd, stock: e.target.value})} className="w-full p-2 border rounded" />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-gray-500">Descripción</label>
+                        <textarea placeholder="Ej: Cemento de 42.5 kg por saco." value={nuevoProd.descripcion} onChange={(e) => setNuevoProd({...nuevoProd, descripcion: e.target.value})} rows={3} className="w-full p-2 border rounded resize-none" />
                       </div>
 
                       <button type="submit" className={`w-full text-white font-bold py-2 rounded-lg text-sm mt-2 transition ${modoEdicion ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
@@ -512,4 +528,4 @@ export default function App() {
       )}
     </div>
   );
-}
+} 
