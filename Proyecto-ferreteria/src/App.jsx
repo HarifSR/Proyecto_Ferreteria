@@ -417,14 +417,9 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center gap-3">
                     <input type="text" placeholder="Buscar por nombre o código de producto..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} className="p-2.5 border rounded-lg text-sm w-full max-w-sm" />
-                    <div className="flex gap-2 shrink-0">
-                      <button onClick={() => setSubSeccionAdmin('nuevo-producto')} className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition">
-                        ➕ Nuevo Producto
-                      </button>
-                      <button onClick={exportarAExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition">
-                        📥 Exportar a Excel
-                      </button>
-                    </div>
+                    <button onClick={exportarAExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition shrink-0">
+                      📥 Exportar a Excel
+                    </button>
                   </div>
 
                   <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
