@@ -261,7 +261,7 @@ export default function App() {
 
       {/* ROL VENTA CLIENTE */}
       {rol === 'cliente' && (
-        <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="w-full px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
@@ -272,7 +272,7 @@ export default function App() {
                 No encontramos productos con ese nombre. Prueba con otra palabra.
               </div>
             ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {productosFiltradosCliente.map(p => {
                 const sinStock = parseFloat(p.cantidad_stock) <= 0;
                 const stockBajo = !sinStock && parseFloat(p.cantidad_stock) < 20;
@@ -330,7 +330,7 @@ export default function App() {
 
       {/* ROL BACKOFFICE */}
       {rol === 'admin' && (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="w-full px-8 py-6 space-y-6">
           {!token ? (
             <div className="bg-white p-8 rounded-xl shadow-md border max-w-md mx-auto mt-10">
               <div className="text-center mb-6">
