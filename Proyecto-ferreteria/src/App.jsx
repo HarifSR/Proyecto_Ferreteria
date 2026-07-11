@@ -15,7 +15,13 @@ export default function App() {
   const [password, setPassword] = useState('');
 
   // Reportes y Filtros
-  const [reportes, setReportes] = useState({ totalHoy: 0, masVendidos: [], bajoStock: [] });
+  const [reportes, setReportes] = useState({
+    totalHoy: 0, totalMes: 0, totalHistorico: 0, ticketPromedio: 0, cantidadVentas: 0,
+    masVendidos: [], bajoStock: [], totalProductos: 0, valorInventario: 0, agotados: 0,
+    ventasPorCategoria: [], historialVentas: []
+  });
+  const [ventaExpandida, setVentaExpandida] = useState(null);
+  const [detalleVenta, setDetalleVenta] = useState({});
   const [busqueda, setBusqueda] = useState('');
   const [carrito, setCarrito] = useState([]);
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
@@ -63,6 +69,22 @@ export default function App() {
       });
       if (res.ok) setReportes(await res.json());
     } catch (error) { console.error("Error reportes:", error); }
+  };
+
+  const alternarDetalleVenta = async (ventaId) => {
+    if (ventaExpandida === ventaId) { setVentaExpandida(null); return; }
+    setVentaExpandida(ventaId);
+    if (!detalleVenta[ventaId]) {
+      try {
+        const res = await fetch(`http://localhost:5000/api/reportes/venta/${ventaId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setDetalleVenta(prev => ({ ...prev, [ventaId]: data.items }));
+        }
+      } catch (error) { console.error("Error detalle de venta:", error); }
+    }
   };
 
   useEffect(() => {
@@ -362,18 +384,42 @@ export default function App() {
                 <button onClick={cerrarSesion} className="text-xs text-red-500 hover:text-red-700 font-bold transition">🔒 Cerrar Sesión</button>
               </div>
 
-              {/* REPORTES DETALLADOS RESTAURADOS */}
+              {/* REPORTES DETALLADOS AMPLIADOS */}
               {subSeccionAdmin === 'reportes' && (
                 <div className="space-y-6">
-                  {/* Tarjetas KPI */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-6 rounded-2xl shadow-sm">
+                  {/* Tarjetas KPI principales */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-5 rounded-2xl shadow-sm">
                       <p className="text-xs font-bold uppercase tracking-wider opacity-80">💰 Ventas de Hoy</p>
-                      <p className="text-3xl font-black mt-2">${reportes.totalHoy.toFixed(2)}</p>
+                      <p className="text-2xl font-black mt-2">${reportes.totalHoy.toFixed(2)}</p>
                     </div>
-                    <div className="bg-white p-6 rounded-2xl border shadow-sm">
-                      <p className="text-xs text-gray-400 font-bold uppercase">🚨 Productos en Stock Crítico</p>
-                      <p className="text-2xl font-black text-red-500 mt-1">{reportes.bajoStock.length} alertas</p>
+                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">📅 Ventas del Mes</p>
+                      <p className="text-2xl font-black mt-2">${reportes.totalMes.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">🎟️ Ticket Promedio</p>
+                      <p className="text-2xl font-black mt-2">${reportes.ticketPromedio.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 mt-1">{reportes.cantidadVentas} ventas registradas</p>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">🚨 Stock Crítico</p>
+                      <p className="text-2xl font-black text-red-500 mt-2">{reportes.bajoStock.length} alertas</p>
+                      {reportes.agotados > 0 && <p className="text-xs text-red-500 mt-1">{reportes.agotados} sin stock</p>}
+                    </div>
+                  </div>
+
+                  {/* Salud del inventario */}
+                  <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col sm:flex-row justify-between gap-4">
+                    <div>
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">📦 Valor Total del Inventario</p>
+                      <p className="text-2xl font-black mt-1">${reportes.valorInventario.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 mt-1">Suma de precio × stock disponible en {reportes.totalProductos} productos.</p>
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">💵 Ventas Históricas</p>
+                      <p className="text-2xl font-black mt-1">${reportes.totalHistorico.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 mt-1">Desde el inicio de operaciones.</p>
                     </div>
                   </div>
 
@@ -382,7 +428,7 @@ export default function App() {
                     <div className="bg-white p-5 rounded-xl border shadow-sm">
                       <h3 className="font-bold text-gray-900 mb-4">🔥 Top 5 Más Vendidos</h3>
                       <div className="divide-y text-sm">
-                        {reportes.masVendidos.length === 0 ? <p className="text-gray-400 py-2">Sin datos.</p> : reportes.masVendidos.map((prod, idx) => (
+                        {reportes.masVendidos.length === 0 ? <p className="text-gray-400 py-2">Aún no hay ventas registradas.</p> : reportes.masVendidos.map((prod, idx) => (
                           <div key={idx} className="py-2.5 flex justify-between items-center">
                             <div>
                               <p className="font-bold text-gray-800">{prod.nombre}</p>
@@ -408,6 +454,86 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Ventas por categoría */}
+                  {reportes.ventasPorCategoria.length > 0 && (
+                    <div className="bg-white p-5 rounded-xl border shadow-sm">
+                      <h3 className="font-bold text-gray-900 mb-4">🗂️ Ingresos por Categoría</h3>
+                      <div className="space-y-3">
+                        {(() => {
+                          const maxIngreso = Math.max(...reportes.ventasPorCategoria.map(c => parseFloat(c.ingresos)));
+                          return reportes.ventasPorCategoria.map((cat, idx) => (
+                            <div key={idx}>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="font-semibold text-gray-700">{cat.categoria}</span>
+                                <span className="font-bold text-gray-800">${parseFloat(cat.ingresos).toFixed(2)}</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${maxIngreso > 0 ? (parseFloat(cat.ingresos) / maxIngreso) * 100 : 0}%` }}></div>
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Historial de Ventas */}
+                  <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                    <div className="p-5 border-b">
+                      <h3 className="font-bold text-gray-900">🧾 Historial de Ventas</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">Últimas {reportes.historialVentas.length} ventas registradas. Toca una fila para ver los productos vendidos.</p>
+                    </div>
+                    {reportes.historialVentas.length === 0 ? (
+                      <p className="text-gray-400 text-sm p-5">Aún no se ha registrado ninguna venta.</p>
+                    ) : (
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
+                          <tr>
+                            <th className="p-4">Venta</th>
+                            <th className="p-4">Fecha</th>
+                            <th className="p-4">Artículos</th>
+                            <th className="p-4">Total</th>
+                            <th className="p-4"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {reportes.historialVentas.map(venta => (
+                            <React.Fragment key={venta.id}>
+                              <tr onClick={() => alternarDetalleVenta(venta.id)} className="hover:bg-gray-50 transition cursor-pointer">
+                                <td className="p-4 sku text-gray-400">#{venta.id}</td>
+                                <td className="p-4 text-gray-700">{new Date(venta.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                                <td className="p-4 text-gray-500">{venta.items} artículo{venta.items != 1 ? 's' : ''}</td>
+                                <td className="p-4 font-bold">${parseFloat(venta.total).toFixed(2)}</td>
+                                <td className="p-4 text-right text-gray-400">{ventaExpandida === venta.id ? '▲' : '▼'}</td>
+                              </tr>
+                              {ventaExpandida === venta.id && (
+                                <tr>
+                                  <td colSpan={5} className="p-4 bg-gray-50">
+                                    {!detalleVenta[venta.id] ? (
+                                      <p className="text-xs text-gray-400">Cargando detalle...</p>
+                                    ) : (
+                                      <div className="divide-y">
+                                        {detalleVenta[venta.id].map((item, i) => (
+                                          <div key={i} className="py-2 flex justify-between text-sm">
+                                            <div>
+                                              <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
+                                              <p className="text-xs text-gray-400">{item.cantidad} × ${parseFloat(item.precio_unitario).toFixed(2)}</p>
+                                            </div>
+                                            <span className="font-bold text-gray-800">${parseFloat(item.subtotal).toFixed(2)}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
               )}
