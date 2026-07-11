@@ -18,12 +18,15 @@ export default function App() {
   const [reportes, setReportes] = useState({
     totalHoy: 0, totalMes: 0, totalHistorico: 0, ticketPromedio: 0, cantidadVentas: 0,
     masVendidos: [], bajoStock: [], totalProductos: 0, valorInventario: 0, agotados: 0,
-    ventasPorCategoria: [], historialVentas: []
+    ventasPorCategoria: [], ventasPorTipo: [], historialVentas: []
   });
   const [ventaExpandida, setVentaExpandida] = useState(null);
   const [detalleVenta, setDetalleVenta] = useState({});
   const [busqueda, setBusqueda] = useState('');
   const [carrito, setCarrito] = useState([]);
+  const [tipoVenta, setTipoVenta] = useState('Contado');
+  const [nombreClienteCredito, setNombreClienteCredito] = useState('');
+  const [facturaGenerada, setFacturaGenerada] = useState(null);
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
 
   // Formulario de Producto (Sirve para Crear y Editar)
@@ -261,9 +264,28 @@ export default function App() {
       const res = await fetch('http://localhost:5000/api/ventas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ carrito: carrito, total: parseFloat(calcularTotalCarrito()) })
+        body: JSON.stringify({ carrito: carrito, total: parseFloat(calcularTotalCarrito()), tipoVenta })
       });
-      if (res.ok) { alert(`🧾 ¡Venta Exitosa!`); setCarrito([]); cargarInventario(); }
+      const data = await res.json();
+      if (res.ok) {
+        if (tipoVenta === 'Crédito') {
+          setFacturaGenerada({
+            id: data.ventaId,
+            fecha: data.fecha,
+            items: carrito,
+            total: data.total,
+            cliente: nombreClienteCredito
+          });
+        } else {
+          alert('✅ ¡Venta cobrada con éxito!');
+        }
+        setCarrito([]);
+        setNombreClienteCredito('');
+        setTipoVenta('Contado');
+        cargarInventario();
+      } else {
+        alert(data.error || 'No se pudo procesar la venta.');
+      }
     } catch (error) { alert("Error en conexión."); }
   };
 
@@ -271,7 +293,8 @@ export default function App() {
   const productosFiltradosAdmin = productos.filter(p => p.nombre.toLowerCase().includes(busquedaAdmin.toLowerCase()) || p.id.toLowerCase().includes(busquedaAdmin.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans text-gray-800">
+    <>
+    <div className="min-h-screen bg-gray-100 font-sans text-gray-800 print-hide">
       {/* Navbar */}
       <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shadow-md">
         <span className="brand-mark text-xl font-bold text-yellow-500 tracking-tight">🛠️ FerreSistema Pro</span>
@@ -340,10 +363,26 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+                <div className="pt-3 border-t">
+                  <p className="text-xs font-bold text-gray-500 mb-2">Tipo de Venta</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setTipoVenta('Contado')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVenta === 'Contado' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>💵 Contado</button>
+                    <button type="button" onClick={() => setTipoVenta('Crédito')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVenta === 'Crédito' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>🧾 Crédito</button>
+                  </div>
+                  {tipoVenta === 'Crédito' && (
+                    <div className="mt-3">
+                      <label className="text-xs font-bold text-gray-500">Nombre del Cliente (para la factura)</label>
+                      <input type="text" placeholder="Ej: Juan Pérez" value={nombreClienteCredito} onChange={(e) => setNombreClienteCredito(e.target.value)} className="w-full p-2 border rounded mt-1 text-sm" />
+                      <p className="text-[11px] text-gray-400 mt-1">Se generará una factura para imprimir y presentar en la tienda física al recoger el producto.</p>
+                    </div>
+                  )}
+                </div>
                 <div className="pt-3 border-t font-black text-xl flex justify-between">
                   <span>Total a Cobrar:</span><span>${calcularTotalCarrito()}</span>
                 </div>
-                <button onClick={procesarFacturacion} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition">Confirmar Cobro</button>
+                <button onClick={procesarFacturacion} className={`w-full text-white font-bold py-3 rounded-xl text-sm transition ${tipoVenta === 'Crédito' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}>
+                  {tipoVenta === 'Crédito' ? '🧾 Generar Factura de Crédito' : '✅ Confirmar Cobro'}
+                </button>
               </div>
             )}
           </div>
@@ -479,6 +518,37 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Comparación Contado vs Crédito */}
+                  {reportes.ventasPorTipo.length > 0 && (() => {
+                    const contado = reportes.ventasPorTipo.find(t => t.tipoVenta === 'Contado') || { cantidad: 0, total: 0 };
+                    const credito = reportes.ventasPorTipo.find(t => t.tipoVenta === 'Crédito') || { cantidad: 0, total: 0 };
+                    const totalGeneral = contado.total + credito.total;
+                    const pctContado = totalGeneral > 0 ? (contado.total / totalGeneral) * 100 : 0;
+                    const pctCredito = totalGeneral > 0 ? (credito.total / totalGeneral) * 100 : 0;
+                    return (
+                      <div className="bg-white p-5 rounded-xl border shadow-sm">
+                        <h3 className="font-bold text-gray-900 mb-1">⚖️ Contado vs Crédito</h3>
+                        <p className="text-xs text-gray-400 mb-4">Comparación histórica de cómo tus clientes prefieren pagar.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                          <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                            <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">💵 Contado</p>
+                            <p className="text-2xl font-black mt-1">${contado.total.toFixed(2)}</p>
+                            <p className="text-xs text-gray-500 mt-1">{contado.cantidad} venta{contado.cantidad != 1 ? 's' : ''} · {pctContado.toFixed(0)}% del total</p>
+                          </div>
+                          <div className="p-4 rounded-xl bg-orange-100 border border-orange-100">
+                            <p className="text-xs font-bold text-orange-800 uppercase tracking-wider">🧾 Crédito</p>
+                            <p className="text-2xl font-black mt-1">${credito.total.toFixed(2)}</p>
+                            <p className="text-xs text-gray-500 mt-1">{credito.cantidad} venta{credito.cantidad != 1 ? 's' : ''} · {pctCredito.toFixed(0)}% del total</p>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 flex overflow-hidden">
+                          <div className="bg-blue-600 h-2.5" style={{ width: `${pctContado}%` }}></div>
+                          <div className="bg-orange-600 h-2.5" style={{ width: `${pctCredito}%` }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Historial de Ventas */}
                   <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                     <div className="p-5 border-b">
@@ -493,6 +563,7 @@ export default function App() {
                           <tr>
                             <th className="p-4">Venta</th>
                             <th className="p-4">Fecha</th>
+                            <th className="p-4">Tipo</th>
                             <th className="p-4">Artículos</th>
                             <th className="p-4">Total</th>
                             <th className="p-4"></th>
@@ -504,13 +575,18 @@ export default function App() {
                               <tr onClick={() => alternarDetalleVenta(venta.id)} className="hover:bg-gray-50 transition cursor-pointer">
                                 <td className="p-4 sku text-gray-400">#{venta.id}</td>
                                 <td className="p-4 text-gray-700">{new Date(venta.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                                <td className="p-4">
+                                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${venta.tipo_venta === 'Crédito' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-700'}`}>
+                                    {venta.tipo_venta === 'Crédito' ? '🧾 Crédito' : '💵 Contado'}
+                                  </span>
+                                </td>
                                 <td className="p-4 text-gray-500">{venta.items} artículo{venta.items != 1 ? 's' : ''}</td>
                                 <td className="p-4 font-bold">${parseFloat(venta.total).toFixed(2)}</td>
                                 <td className="p-4 text-right text-gray-400">{ventaExpandida === venta.id ? '▲' : '▼'}</td>
                               </tr>
                               {ventaExpandida === venta.id && (
                                 <tr>
-                                  <td colSpan={5} className="p-4 bg-gray-50">
+                                  <td colSpan={6} className="p-4 bg-gray-50">
                                     {!detalleVenta[venta.id] ? (
                                       <p className="text-xs text-gray-400">Cargando detalle...</p>
                                     ) : (
@@ -690,5 +766,47 @@ export default function App() {
         </div>
       )}
     </div>
+
+    {facturaGenerada && (
+      <div className="print-show fixed inset-0 bg-black/70 flex items-center justify-center p-6">
+        <div className="factura-print bg-white text-gray-900 rounded-xl shadow-lg max-w-md w-full p-8">
+          <div className="text-center border-b pb-4 mb-4">
+            <p className="text-lg font-black">🛠️ FerreSistema Pro</p>
+            <p className="text-xs text-gray-500 mt-1">Factura de Venta al Crédito</p>
+          </div>
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-gray-500">Folio:</span><span className="font-bold sku">#{facturaGenerada.id}</span>
+          </div>
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-gray-500">Fecha:</span><span className="font-bold">{new Date(facturaGenerada.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+          </div>
+          {facturaGenerada.cliente && (
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-500">Cliente:</span><span className="font-bold">{facturaGenerada.cliente}</span>
+            </div>
+          )}
+          <div className="divide-y border-t border-b mt-3">
+            {facturaGenerada.items.map(item => (
+              <div key={item.id} className="py-2 flex justify-between text-sm">
+                <div>
+                  <p className="font-semibold">{item.nombre}</p>
+                  <p className="text-xs text-gray-500">{item.cantidad} × ${parseFloat(item.precio).toFixed(2)}</p>
+                </div>
+                <span className="font-bold">${(item.cantidad * parseFloat(item.precio)).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-lg font-black mt-3">
+            <span>Total:</span><span>${facturaGenerada.total.toFixed(2)}</span>
+          </div>
+          <p className="text-xs text-gray-500 mt-4 text-center">Presenta esta factura en la ferretería física para retirar tu pedido.</p>
+          <div className="flex gap-2 mt-6 print-hide-inner">
+            <button onClick={() => window.print()} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">🖨️ Imprimir</button>
+            <button onClick={() => setFacturaGenerada(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 rounded-lg text-sm transition">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
