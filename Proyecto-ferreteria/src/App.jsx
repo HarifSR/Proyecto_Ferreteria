@@ -23,7 +23,7 @@ export default function App() {
 
   // Formulario de Producto (Sirve para Crear y Editar)
   const [nuevoProd, setNuevoProd] = useState({
-    id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: ''
+    id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '', imagen: ''
   });
   const [modoEdicion, setModoEdicion] = useState(false);
 
@@ -94,7 +94,8 @@ export default function App() {
       categoria_id: parseInt(nuevoProd.categoria_id) || 1,
       unidad_base_id: parseInt(nuevoProd.unidad_base_id) || 1,
       marca: nuevoProd.marca || 'Genérica',
-      descripcion: nuevoProd.descripcion || ''
+      descripcion: nuevoProd.descripcion || '',
+      url_imagen: nuevoProd.imagen || null
     };
 
     const url = modoEdicion
@@ -132,14 +133,15 @@ export default function App() {
       categoria_id: producto.categoria_id || '',
       unidad_base_id: producto.unidad_base_id || '',
       marca: producto.marca || '',
-      descripcion: producto.descripcion || ''
+      descripcion: producto.descripcion || '',
+      imagen: producto.url_imagen || ''
     });
     setSubSeccionAdmin('nuevo-producto'); // Lleva al usuario al formulario
   };
 
   const limpiarFormulario = () => {
     setModoEdicion(false);
-    setNuevoProd({ id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '' });
+    setNuevoProd({ id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '', imagen: '' });
   };
 
   const manejarEliminarProducto = async (id_producto) => {
@@ -274,7 +276,7 @@ export default function App() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-5 rounded-2xl shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wider opacity-80">📦 Valor del Inventario</p>
-                    <p className="text-2xl font-black mt-2">${reportes.valorInventario.toFixed(2)}</p>
+                    <p className="text-2xl font-black mt-2">Q{reportes.valorInventario.toFixed(2)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">🗃️ Productos Registrados</p>
@@ -301,9 +303,9 @@ export default function App() {
                         <div key={prod.id} className="py-2.5 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-gray-800">{prod.nombre}</p>
-                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}{parseFloat(prod.cantidad_stock)} uds × ${parseFloat(prod.precio).toFixed(2)}</p>
+                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}{parseFloat(prod.cantidad_stock)} uds × Q{parseFloat(prod.precio).toFixed(2)}</p>
                           </div>
-                          <span className="bg-orange-100 text-orange-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">${parseFloat(prod.valor_total).toFixed(2)}</span>
+                          <span className="bg-orange-100 text-orange-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">Q{parseFloat(prod.valor_total).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
@@ -337,7 +339,7 @@ export default function App() {
                           <div key={idx}>
                             <div className="flex justify-between text-sm mb-1">
                               <span className="font-semibold text-gray-700">{cat.categoria} <span className="text-gray-400 font-normal">({cat.cantidad_productos} productos)</span></span>
-                              <span className="font-bold text-gray-800">${parseFloat(cat.valor).toFixed(2)}</span>
+                              <span className="font-bold text-gray-800">Q{parseFloat(cat.valor).toFixed(2)}</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
                               <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${maxValor > 0 ? (parseFloat(cat.valor) / maxValor) * 100 : 0}%` }}></div>
@@ -379,9 +381,19 @@ export default function App() {
                       ) : productosFiltradosAdmin.map(p => (
                         <tr key={p.id} className="hover:bg-gray-50 transition">
                           <td className="p-4 sku text-gray-400">{p.id}</td>
-                          <td className="p-4 font-semibold">{p.nombre}</td>
+                          <td className="p-4 font-semibold">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg border bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center">
+                                {p.url_imagen ? (
+                                  <img src={p.url_imagen} alt={p.nombre} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                                ) : null}
+                                <span className="text-gray-300 text-base" style={{ display: p.url_imagen ? 'none' : 'flex' }}>📦</span>
+                              </div>
+                              <span>{p.nombre}</span>
+                            </div>
+                          </td>
                           <td className="p-4 text-gray-500">{p.marca || '—'}</td>
-                          <td className="p-4 font-bold">${parseFloat(p.precio).toFixed(2)}</td>
+                          <td className="p-4 font-bold">Q{parseFloat(p.precio).toFixed(2)}</td>
                           <td className="p-4"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.cantidad_stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{parseFloat(p.cantidad_stock)} uds</span></td>
                           <td className="p-4 text-center space-x-2">
                             <button onClick={() => iniciarEdicion(p)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded transition">✏️ Editar</button>
@@ -449,7 +461,7 @@ export default function App() {
                         <input type="text" placeholder="Ej: Progreso" value={nuevoProd.marca} onChange={(e) => setNuevoProd({...nuevoProd, marca: e.target.value})} className="w-full p-2 border rounded" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-gray-500">Precio ($)</label>
+                        <label className="text-xs font-bold text-gray-500">Precio (Q)</label>
                         <input type="number" step="0.01" placeholder="0.00" value={nuevoProd.precio} onChange={(e) => setNuevoProd({...nuevoProd, precio: e.target.value})} className="w-full p-2 border rounded" />
                       </div>
                     </div>
@@ -464,6 +476,20 @@ export default function App() {
                     <div>
                       <label className="text-xs font-bold text-gray-500">Descripción (opcional)</label>
                       <textarea placeholder="Ej: Cemento de 42.5 kg por saco." value={nuevoProd.descripcion} onChange={(e) => setNuevoProd({...nuevoProd, descripcion: e.target.value})} rows={3} className="w-full p-2 border rounded resize-none" />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-gray-500">URL de la Imagen (opcional)</label>
+                      <div className="flex gap-3 items-start mt-1">
+                        <input type="text" placeholder="https://ejemplo.com/imagen.jpg" value={nuevoProd.imagen} onChange={(e) => setNuevoProd({...nuevoProd, imagen: e.target.value})} className="w-full p-2 border rounded text-sm" />
+                        <div className="w-14 h-14 rounded-lg border bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center">
+                          {nuevoProd.imagen ? (
+                            <img src={nuevoProd.imagen} alt="Vista previa" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                          ) : null}
+                          <span className="text-gray-300 text-xl" style={{ display: nuevoProd.imagen ? 'none' : 'flex' }}>📦</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-gray-400 mt-1">Pega el enlace de una imagen ya subida a internet (por ejemplo, de Google Imágenes).</p>
                     </div>
 
                     <button type="submit" className={`w-full text-white font-bold py-2.5 rounded-lg text-sm mt-2 transition ${modoEdicion ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}>

@@ -110,6 +110,12 @@ select option { color: var(--text) !important; background-color: var(--surface-2
 .min-h-screen { min-height: 100vh; }
 .w-full { width: 100%; }
 .w-6 { width: 1.5rem; }
+.w-10 { width: 2.5rem; }
+.w-14 { width: 3.5rem; }
+.h-10 { height: 2.5rem; }
+.h-14 { height: 3.5rem; }
+.object-cover { object-fit: cover; }
+.items-start { align-items: flex-start; }
 .h-fit { height: fit-content; }
 .h-2 { height: 0.5rem; }
 .h-2\.5 { height: 0.625rem; }
