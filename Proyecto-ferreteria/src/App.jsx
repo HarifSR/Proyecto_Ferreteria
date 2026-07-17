@@ -24,6 +24,7 @@ export default function App() {
   });
 
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
+  const [modoCatalogo, setModoCatalogo] = useState('producto'); // 'producto' | 'venta' | 'compra'
 
   // Registro de Ventas
   const [productoVentaSel, setProductoVentaSel] = useState('');
@@ -94,8 +95,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if ((subSeccionAdmin === 'reportes' || subSeccionAdmin === 'ventas-compras') && token) cargarReportesDashboard();
-  }, [subSeccionAdmin, token]);
+    if ((subSeccionAdmin === 'reportes' || (subSeccionAdmin === 'nuevo-producto' && modoCatalogo !== 'producto')) && token) cargarReportesDashboard();
+  }, [subSeccionAdmin, modoCatalogo, token]);
 
   // --------------------------------------------------------
   // REGISTRO DE VENTAS (Contado suma a la ganancia, Crédito queda pendiente)
@@ -285,6 +286,7 @@ export default function App() {
       imagen: producto.url_imagen || ''
     });
     setSubSeccionAdmin('nuevo-producto'); // Lleva al usuario al formulario
+    setModoCatalogo('producto');
   };
 
   const limpiarFormulario = () => {
@@ -412,8 +414,7 @@ export default function App() {
               <div className="flex space-x-1 bg-white border rounded-lg p-1">
                 <button onClick={() => { setSubSeccionAdmin('reportes'); limpiarFormulario(); }} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'reportes' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📊 Reportes</button>
                 <button onClick={() => { setSubSeccionAdmin('ver-inventario'); limpiarFormulario(); }} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'ver-inventario' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📋 Inventario</button>
-                <button onClick={() => setSubSeccionAdmin('nuevo-producto')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>➕ Productos y Catálogos</button>
-                <button onClick={() => setSubSeccionAdmin('ventas-compras')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'ventas-compras' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>💰 Ventas y Compras</button>
+                <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('producto'); }} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>➕ Productos y Catálogos</button>
               </div>
               <button onClick={cerrarSesion} className="text-xs text-red-500 hover:text-red-700 font-bold transition">🔒 Cerrar Sesión</button>
             </div>
@@ -524,9 +525,17 @@ export default function App() {
               </div>
             )}
 
-            {/* VENTAS Y COMPRAS: registrar ventas (Contado/Crédito) y compras (reabastecimiento) */}
-            {subSeccionAdmin === 'ventas-compras' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* GESTION DE CATALOGOS: selector Nuevo Producto / Venta / Compra */}
+            {subSeccionAdmin === 'nuevo-producto' && (
+              <div className="space-y-6">
+                <div className="flex space-x-1 bg-white border rounded-lg p-1 w-fit">
+                  <button onClick={() => setModoCatalogo('producto')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${modoCatalogo === 'producto' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📦 Nuevo Producto</button>
+                  <button onClick={() => setModoCatalogo('venta')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${modoCatalogo === 'venta' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>💵 Registrar Venta</button>
+                  <button onClick={() => setModoCatalogo('compra')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${modoCatalogo === 'compra' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📥 Registrar Compra</button>
+                </div>
+
+                {modoCatalogo === 'venta' && (
+                <div className="space-y-6">
 
                 {/* Panel de Registrar Venta */}
                 <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
@@ -535,14 +544,32 @@ export default function App() {
                     <p className="text-xs text-gray-400 mt-0.5">Añade los productos vendidos y elige si fue al contado o al crédito.</p>
                   </div>
 
-                  <div className="flex gap-2">
-                    <select value={productoVentaSel} onChange={(e) => setProductoVentaSel(e.target.value)} className="w-full p-2 border rounded bg-gray-50 text-sm">
-                      <option value="">-- Selecciona un producto --</option>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">Producto</label>
+                    <select value={productoVentaSel} onChange={(e) => setProductoVentaSel(e.target.value)} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
+                      <option value="">Seleccionar producto</option>
                       {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (Q{parseFloat(p.precio).toFixed(2)} · {parseFloat(p.cantidad_stock)} uds)</option>)}
                     </select>
-                    <input type="number" min="1" value={cantidadVentaSel} onChange={(e) => setCantidadVentaSel(e.target.value)} className="w-20 p-2 border rounded text-sm shrink-0" />
-                    <button type="button" onClick={agregarLineaVenta} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 rounded font-bold transition shrink-0">Agregar</button>
                   </div>
+
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-gray-500">Cantidad</label>
+                      <input type="number" min="1" value={cantidadVentaSel} onChange={(e) => setCantidadVentaSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <button type="button" onClick={agregarLineaVenta} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
+                  </div>
+
+                  {productoVentaSel && (() => {
+                    const p = productos.find(pr => pr.id === productoVentaSel);
+                    if (!p) return null;
+                    return (
+                      <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
+                        <span className="font-semibold text-gray-800">{p.nombre}</span>
+                        <span className="text-blue-700 font-bold">Q{parseFloat(p.precio).toFixed(2)} <span className="text-gray-400 font-normal">· {parseFloat(p.cantidad_stock)} disponibles</span></span>
+                      </div>
+                    );
+                  })()}
 
                   {lineasVenta.length > 0 && (
                     <div className="divide-y border rounded-lg">
@@ -578,51 +605,6 @@ export default function App() {
                   <button onClick={registrarVenta} className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}>
                     {tipoVentaNueva === 'Crédito' ? '🧾 Registrar Venta a Crédito' : '✅ Registrar Venta al Contado'}
                   </button>
-                </div>
-
-                {/* Panel de Registrar Compra */}
-                <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-                  <div>
-                    <h3 className="font-bold text-gray-800">📥 Registrar Compra</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Registra la mercadería comprada a tus proveedores; el stock se actualiza solo.</p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <select value={productoCompraSel} onChange={(e) => setProductoCompraSel(e.target.value)} className="w-full p-2 border rounded bg-gray-50 text-sm">
-                      <option value="">-- Selecciona un producto --</option>
-                      {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} ({parseFloat(p.cantidad_stock)} uds)</option>)}
-                    </select>
-                    <input type="number" min="1" placeholder="Cant." value={cantidadCompraSel} onChange={(e) => setCantidadCompraSel(e.target.value)} className="w-20 p-2 border rounded text-sm shrink-0" />
-                    <input type="number" step="0.01" placeholder="Costo Q" value={costoCompraSel} onChange={(e) => setCostoCompraSel(e.target.value)} className="w-24 p-2 border rounded text-sm shrink-0" />
-                    <button type="button" onClick={agregarLineaCompra} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 rounded font-bold transition shrink-0">Agregar</button>
-                  </div>
-
-                  {lineasCompra.length > 0 && (
-                    <div className="divide-y border rounded-lg">
-                      {lineasCompra.map(l => (
-                        <div key={l.producto_id} className="p-2.5 flex justify-between items-center text-sm">
-                          <div>
-                            <p className="font-semibold">{l.nombre}</p>
-                            <p className="text-xs text-gray-400">{l.cantidad} × Q{l.costo_unitario.toFixed(2)}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-bold">Q{(l.cantidad * l.costo_unitario).toFixed(2)}</span>
-                            <button onClick={() => quitarLineaCompra(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="text-xs font-bold text-gray-500">Proveedor (opcional)</label>
-                    <input type="text" placeholder="Ej: Cementos Progreso" value={proveedorCompra} onChange={(e) => setProveedorCompra(e.target.value)} className="w-full p-2 border rounded mt-1 text-sm" />
-                  </div>
-
-                  <div className="pt-3 border-t font-black text-lg flex justify-between">
-                    <span>Total:</span><span>Q{calcularTotalCompra()}</span>
-                  </div>
-                  <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">📥 Registrar Compra</button>
                 </div>
 
                 {/* Historial reciente de Ventas */}
@@ -696,6 +678,86 @@ export default function App() {
                   )}
                 </div>
 
+                </div>
+                )}
+
+                {modoCatalogo === 'compra' && (
+                <div className="space-y-6">
+
+                {/* Panel de Registrar Compra */}
+                <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
+                  <div>
+                    <h3 className="font-bold text-gray-800">📥 Registrar Compra</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Registra la mercadería comprada a tus proveedores; el stock se actualiza solo.</p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">Producto</label>
+                    <select value={productoCompraSel} onChange={(e) => {
+                      const idSeleccionado = e.target.value;
+                      setProductoCompraSel(idSeleccionado);
+                      if (!costoCompraSel) {
+                        const p = productos.find(pr => pr.id === idSeleccionado);
+                        if (p && p.precio) setCostoCompraSel(parseFloat(p.precio).toFixed(2));
+                      }
+                    }} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
+                      <option value="">Seleccionar producto</option>
+                      {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} ({parseFloat(p.cantidad_stock)} uds)</option>)}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-gray-500">Cantidad</label>
+                      <input type="number" min="1" value={cantidadCompraSel} onChange={(e) => setCantidadCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-gray-500">Costo unitario (Q)</label>
+                      <input type="number" step="0.01" placeholder="0.00" value={costoCompraSel} onChange={(e) => setCostoCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <button type="button" onClick={agregarLineaCompra} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
+                  </div>
+
+                  {productoCompraSel && (() => {
+                    const p = productos.find(pr => pr.id === productoCompraSel);
+                    if (!p) return null;
+                    return (
+                      <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
+                        <span className="font-semibold text-gray-800">{p.nombre}</span>
+                        <span className="text-gray-400">Stock actual: <span className="text-blue-700 font-bold">{parseFloat(p.cantidad_stock)}</span> uds · Precio de venta: Q{parseFloat(p.precio).toFixed(2)}</span>
+                      </div>
+                    );
+                  })()}
+                  <p className="text-[11px] text-gray-400">💡 El costo se sugiere igual al precio de venta actual; ajústalo al monto real que pagaste al proveedor.</p>
+
+                  {lineasCompra.length > 0 && (
+                    <div className="divide-y border rounded-lg">
+                      {lineasCompra.map(l => (
+                        <div key={l.producto_id} className="p-2.5 flex justify-between items-center text-sm">
+                          <div>
+                            <p className="font-semibold">{l.nombre}</p>
+                            <p className="text-xs text-gray-400">{l.cantidad} × Q{l.costo_unitario.toFixed(2)}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold">Q{(l.cantidad * l.costo_unitario).toFixed(2)}</span>
+                            <button onClick={() => quitarLineaCompra(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">Proveedor (opcional)</label>
+                    <input type="text" placeholder="Ej: Cementos Progreso" value={proveedorCompra} onChange={(e) => setProveedorCompra(e.target.value)} className="w-full p-2 border rounded mt-1 text-sm" />
+                  </div>
+
+                  <div className="pt-3 border-t font-black text-lg flex justify-between">
+                    <span>Total:</span><span>Q{calcularTotalCompra()}</span>
+                  </div>
+                  <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">📥 Registrar Compra</button>
+                </div>
+
                 {/* Historial reciente de Compras */}
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden lg:col-span-2">
                   <div className="p-5 border-b">
@@ -752,66 +814,12 @@ export default function App() {
                   )}
                 </div>
 
-              </div>
-            )}
-
-            {/* INVENTARIO MAESTRO CON ACCIONES Y EXCEL */}
-            {subSeccionAdmin === 'ver-inventario' && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center gap-3">
-                  <input type="text" placeholder="Buscar por nombre o código de producto..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} className="p-2.5 border rounded-lg text-sm w-full max-w-sm" />
-                  <button onClick={exportarAExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition shrink-0">
-                    📥 Exportar a Excel
-                  </button>
                 </div>
+                )}
 
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
-                      <tr>
-                        <th className="p-4">Código</th>
-                        <th className="p-4">Producto</th>
-                        <th className="p-4">Marca</th>
-                        <th className="p-4">Precio</th>
-                        <th className="p-4">Stock</th>
-                        <th className="p-4 text-center">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {productosFiltradosAdmin.length === 0 ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-gray-400">No hay productos que coincidan con tu búsqueda.</td></tr>
-                      ) : productosFiltradosAdmin.map(p => (
-                        <tr key={p.id} className="hover:bg-gray-50 transition">
-                          <td className="p-4 sku text-gray-400">{p.id}</td>
-                          <td className="p-4 font-semibold">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg border bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center">
-                                {p.url_imagen ? (
-                                  <img src={p.url_imagen} alt={p.nombre} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-                                ) : null}
-                                <span className="text-gray-300 text-base" style={{ display: p.url_imagen ? 'none' : 'flex' }}>📦</span>
-                              </div>
-                              <span>{p.nombre}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 text-gray-500">{p.marca || '—'}</td>
-                          <td className="p-4 font-bold">Q{parseFloat(p.precio).toFixed(2)}</td>
-                          <td className="p-4"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.cantidad_stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{parseFloat(p.cantidad_stock)} uds</span></td>
-                          <td className="p-4 text-center space-x-2">
-                            <button onClick={() => iniciarEdicion(p)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded transition">✏️ Editar</button>
-                            <button onClick={() => manejarEliminarProducto(p.id)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded transition">🗑️ Eliminar</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* GESTION DE CATALOGOS (NUEVO/EDITAR PRODUCTO) */}
-            {subSeccionAdmin === 'nuevo-producto' && (
+                {modoCatalogo === 'producto' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
 
                 {/* Formulario Maestro de Producto */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-xl border shadow-sm">
@@ -924,8 +932,67 @@ export default function App() {
                   </div>
                 </div>
 
+
+              </div>
+                )}
+
               </div>
             )}
+
+            {/* INVENTARIO MAESTRO CON ACCIONES Y EXCEL */}
+            {subSeccionAdmin === 'ver-inventario' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center gap-3">
+                  <input type="text" placeholder="Buscar por nombre o código de producto..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} className="p-2.5 border rounded-lg text-sm w-full max-w-sm" />
+                  <button onClick={exportarAExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition shrink-0">
+                    📥 Exportar a Excel
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
+                      <tr>
+                        <th className="p-4">Código</th>
+                        <th className="p-4">Producto</th>
+                        <th className="p-4">Marca</th>
+                        <th className="p-4">Precio</th>
+                        <th className="p-4">Stock</th>
+                        <th className="p-4 text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {productosFiltradosAdmin.length === 0 ? (
+                        <tr><td colSpan={6} className="p-8 text-center text-gray-400">No hay productos que coincidan con tu búsqueda.</td></tr>
+                      ) : productosFiltradosAdmin.map(p => (
+                        <tr key={p.id} className="hover:bg-gray-50 transition">
+                          <td className="p-4 sku text-gray-400">{p.id}</td>
+                          <td className="p-4 font-semibold">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg border bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center">
+                                {p.url_imagen ? (
+                                  <img src={p.url_imagen} alt={p.nombre} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                                ) : null}
+                                <span className="text-gray-300 text-base" style={{ display: p.url_imagen ? 'none' : 'flex' }}>📦</span>
+                              </div>
+                              <span>{p.nombre}</span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-gray-500">{p.marca || '—'}</td>
+                          <td className="p-4 font-bold">Q{parseFloat(p.precio).toFixed(2)}</td>
+                          <td className="p-4"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.cantidad_stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{parseFloat(p.cantidad_stock)} uds</span></td>
+                          <td className="p-4 text-center space-x-2">
+                            <button onClick={() => iniciarEdicion(p)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded transition">✏️ Editar</button>
+                            <button onClick={() => manejarEliminarProducto(p.id)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded transition">🗑️ Eliminar</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
           </>
         )}
       </div>

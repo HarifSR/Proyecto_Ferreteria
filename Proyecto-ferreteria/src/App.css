@@ -119,6 +119,7 @@ select option { color: var(--text) !important; background-color: var(--surface-2
 .object-cover { object-fit: cover; }
 .items-start { align-items: flex-start; }
 .h-fit { height: fit-content; }
+.w-fit { width: fit-content; }
 .h-full { height: 100%; }
 .h-2 { height: 0.5rem; }
 .h-2\.5 { height: 0.625rem; }
@@ -143,11 +144,12 @@ select option { color: var(--text) !important; background-color: var(--surface-2
 .cursor-not-allowed { cursor: not-allowed; }
 
 .flex { display: flex; }
-.flex-1 { flex: 1 1 0%; }
+.flex-1 { flex: 1 1 0%; min-width: 0; }
 .flex-col { flex-direction: column; }
 .justify-between { justify-content: space-between; }
 .justify-center { justify-content: center; }
 .items-center { align-items: center; }
+.items-end { align-items: flex-end; }
 
 .grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); }
 .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
