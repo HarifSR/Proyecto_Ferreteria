@@ -20,7 +20,13 @@ export default function App() {
     gananciaHoy: 0, gananciaMes: 0, gananciaHistorica: 0,
     pendienteTotal: 0, pendienteCantidad: 0,
     comprasHoy: 0, comprasMes: 0, comprasHistorico: 0,
-    historialVentas: [], historialCompras: []
+    historialVentas: [], historialCompras: [],
+    comparativas: {
+      semana: { ventas: { actual: 0, anterior: 0 }, compras: { actual: 0, anterior: 0 }, ganancia: { actual: 0, anterior: 0 } },
+      mes: { ventas: { actual: 0, anterior: 0 }, compras: { actual: 0, anterior: 0 }, ganancia: { actual: 0, anterior: 0 } },
+      anio: { ventas: { actual: 0, anterior: 0 }, compras: { actual: 0, anterior: 0 }, ganancia: { actual: 0, anterior: 0 } }
+    },
+    serieMensual: []
   });
 
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
@@ -32,6 +38,7 @@ export default function App() {
   const [lineasVenta, setLineasVenta] = useState([]);
   const [tipoVentaNueva, setTipoVentaNueva] = useState('Contado');
   const [ventaExpandida, setVentaExpandida] = useState(null);
+  const [periodoComparativa, setPeriodoComparativa] = useState('mes'); // 'semana' | 'mes' | 'anio'
   const [detalleVenta, setDetalleVenta] = useState({});
 
   // Registro de Compras
@@ -84,8 +91,17 @@ export default function App() {
       const res = await fetch('http://localhost:5000/api/reportes/dashboard', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) setReportes(await res.json());
-    } catch (error) { console.error("Error reportes:", error); }
+      if (res.ok) {
+        setReportes(await res.json());
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error("Error al cargar reportes:", res.status, data.error);
+        alert(`⚠️ No se pudieron cargar los reportes (${res.status}). ${data.error || 'Revisa la consola del servidor.'}`);
+      }
+    } catch (error) {
+      console.error("Error reportes:", error);
+      alert("⚠️ No se pudo conectar con el servidor para cargar los reportes.");
+    }
   };
 
   useEffect(() => {
@@ -381,18 +397,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-gray-800">
-      {/* Navbar */}
-      <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shadow-md">
-        <span className="brand-mark text-xl font-bold text-yellow-500 tracking-tight">🛠️ FerreSistema Pro</span>
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Control de Inventario</span>
-      </div>
-
-      <div className="w-full px-8 py-6 space-y-6">
-        {!token ? (
-          <div className="bg-white p-8 rounded-xl shadow-md border max-w-md mx-auto mt-10">
+      {!token ? (
+        <div className="h-screen flex items-center justify-center">
+          <div className="bg-white p-8 rounded-xl shadow-md border max-w-md w-full mx-4">
             <div className="text-center mb-6">
-              <span className="text-3xl">🔐</span>
-              <h2 className="text-xl font-bold mt-2">Acceso Administrativo</h2>
+              <span className="brand-mark text-lg font-bold text-orange-600 tracking-tight">🛠️ FerreSistema Pro</span>
+              <h2 className="text-xl font-bold mt-3">🔐 Acceso Administrativo</h2>
               <p className="text-xs text-gray-400 mt-1">Ingresa tus credenciales para gestionar tu inventario.</p>
             </div>
             <form onSubmit={manejarLogin} className="space-y-4">
@@ -407,17 +417,34 @@ export default function App() {
               <button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 rounded-lg transition">Ingresar</button>
             </form>
           </div>
-        ) : (
-          <>
-            {/* Menu Subsecciones */}
-            <div className="flex justify-between items-center border-b pb-3">
-              <div className="flex space-x-1 bg-white border rounded-lg p-1">
-                <button onClick={() => { setSubSeccionAdmin('reportes'); limpiarFormulario(); }} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'reportes' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📊 Reportes</button>
-                <button onClick={() => { setSubSeccionAdmin('ver-inventario'); limpiarFormulario(); }} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'ver-inventario' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📋 Inventario</button>
-                <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('producto'); }} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>➕ Productos y Catálogos</button>
-              </div>
-              <button onClick={cerrarSesion} className="text-xs text-red-500 hover:text-red-700 font-bold transition">🔒 Cerrar Sesión</button>
+        </div>
+      ) : (
+        <div className="flex h-screen">
+          {/* Sidebar */}
+          <div className="w-64 bg-slate-900 text-white flex flex-col h-screen shrink-0">
+            <div className="px-5 py-5 border-b border-slate-700">
+              <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">🛠️ FerreSistema Pro</span>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-1">Control de Inventario</p>
             </div>
+
+            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              <button onClick={() => { setSubSeccionAdmin('reportes'); limpiarFormulario(); }} className={`w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'reportes' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>📊 Reportes</button>
+              <button onClick={() => { setSubSeccionAdmin('ver-inventario'); limpiarFormulario(); }} className={`w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'ver-inventario' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>📋 Inventario</button>
+
+              <p className="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Productos y Catálogos</p>
+              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('producto'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'producto' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>📦 Nuevo Producto</button>
+              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('venta'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'venta' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>💵 Registrar Venta</button>
+              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('compra'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'compra' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>🧾 Registrar Compra</button>
+            </div>
+
+            <div className="p-3 border-t border-slate-700">
+              <button onClick={cerrarSesion} className="w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold text-red-400 hover:text-red-300 hover:bg-slate-800 transition">🔒 Cerrar Sesión</button>
+            </div>
+          </div>
+
+          {/* Contenido principal */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="w-full px-8 py-6 space-y-6">
 
             {/* REPORTES DE INVENTARIO */}
             {subSeccionAdmin === 'reportes' && (
@@ -522,17 +549,216 @@ export default function App() {
                     </div>
                   </div>
                 )}
+
+              {/* Comparativa por periodo: semana / mes / año */}
+              <div className="bg-white p-5 rounded-xl border shadow-sm">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+                  <div>
+                    <h3 className="font-bold text-gray-900">📈 Comparativa de Periodo</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">El periodo actual contra el inmediato anterior.</p>
+                  </div>
+                  <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 w-fit">
+                    <button onClick={() => setPeriodoComparativa('semana')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${periodoComparativa === 'semana' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Semana</button>
+                    <button onClick={() => setPeriodoComparativa('mes')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${periodoComparativa === 'mes' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Mes</button>
+                    <button onClick={() => setPeriodoComparativa('anio')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${periodoComparativa === 'anio' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Año</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {(() => {
+                    const datos = reportes.comparativas[periodoComparativa];
+                    const metricas = [
+                      { key: 'ventas', label: '💵 Ventas', color: 'text-blue-600' },
+                      { key: 'compras', label: '📥 Compras', color: 'text-orange-600' },
+                      { key: 'ganancia', label: '📈 Ganancia', color: 'text-green-600' }
+                    ];
+                    return metricas.map(m => {
+                      const actual = datos[m.key].actual;
+                      const anterior = datos[m.key].anterior;
+                      const cambio = anterior > 0 ? ((actual - anterior) / anterior) * 100 : (actual > 0 ? 100 : 0);
+                      const subio = cambio >= 0;
+                      return (
+                        <div key={m.key} className="p-4 rounded-xl bg-gray-50 border">
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{m.label}</p>
+                          <p className={`text-xl font-black mt-1 ${m.color}`}>Q{actual.toFixed(2)}</p>
+                          <p className={`text-xs font-bold mt-1 ${subio ? 'text-green-600' : 'text-red-500'}`}>
+                            {subio ? '▲' : '▼'} {Math.abs(cambio).toFixed(0)}% <span className="text-gray-400 font-normal">vs anterior (Q{anterior.toFixed(2)})</span>
+                          </p>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              {/* Gráfica: Ventas vs Compras por mes */}
+              <div className="bg-white p-5 rounded-xl border shadow-sm">
+                <h3 className="font-bold text-gray-900 mb-1">📊 Ventas vs Compras — Últimos 12 Meses</h3>
+                <p className="text-xs text-gray-400 mb-4">Compara cuánto vendiste contra cuánto invertiste en reabastecimiento cada mes.</p>
+                {reportes.serieMensual.length === 0 ? (
+                  <p className="text-gray-400 text-sm">Aún no hay suficientes datos para graficar.</p>
+                ) : (() => {
+                  const datos = reportes.serieMensual;
+                  const maxValor = Math.max(1, ...datos.map(d => Math.max(d.ventas, d.compras)));
+                  const alto = 180;
+                  const anchoGrupo = 60;
+                  return (
+                    <div className="overflow-x-auto">
+                      <svg viewBox={`0 0 ${datos.length * anchoGrupo} ${alto + 30}`} className="w-full" style={{ minWidth: `${datos.length * 50}px`, height: '220px' }}>
+                        {datos.map((d, i) => {
+                          const x = i * anchoGrupo;
+                          const alturaVentas = (d.ventas / maxValor) * alto;
+                          const alturaCompras = (d.compras / maxValor) * alto;
+                          return (
+                            <g key={i}>
+                              <rect x={x + 8} y={alto - alturaVentas} width="18" height={Math.max(alturaVentas, 1)} fill="#5B92E5" rx="2" />
+                              <rect x={x + 30} y={alto - alturaCompras} width="18" height={Math.max(alturaCompras, 1)} fill="#F0AE3C" rx="2" />
+                              <text x={x + 28} y={alto + 18} fontSize="9" fill="#8A94A0" textAnchor="middle">{d.etiqueta}</text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                      <div className="flex gap-4 mt-2 text-xs">
+                        <span className="flex items-center space-x-1.5"><span className="w-3 h-3 rounded-sm inline-block bg-blue-600"></span><span>Ventas</span></span>
+                        <span className="flex items-center space-x-1.5"><span className="w-3 h-3 rounded-sm inline-block bg-orange-600"></span><span>Compras</span></span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Historial de Ventas */}
+              <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                <div className="p-5 border-b">
+                  <h3 className="font-bold text-gray-900">🧾 Historial de Ventas</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Toca una fila para ver los productos. Las ventas a crédito se pueden marcar como cobradas.</p>
+                </div>
+                {reportes.historialVentas.length === 0 ? (
+                  <p className="text-gray-400 text-sm p-5">Aún no se ha registrado ninguna venta.</p>
+                ) : (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
+                      <tr>
+                        <th className="p-4">Venta</th>
+                        <th className="p-4">Fecha</th>
+                        <th className="p-4">Tipo</th>
+                        <th className="p-4">Estado</th>
+                        <th className="p-4">Artículos</th>
+                        <th className="p-4">Total</th>
+                        <th className="p-4"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {reportes.historialVentas.map(venta => (
+                        <React.Fragment key={venta.id}>
+                          <tr onClick={() => alternarDetalleVenta(venta.id)} className="hover:bg-gray-50 transition cursor-pointer">
+                            <td className="p-4 sku text-gray-400">#{venta.id}</td>
+                            <td className="p-4 text-gray-700">{new Date(venta.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                            <td className="p-4">
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${venta.tipo_venta === 'Crédito' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-700'}`}>
+                                {venta.tipo_venta === 'Crédito' ? '🧾 Crédito' : '💵 Contado'}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${venta.estado === 'Pendiente' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                {venta.estado === 'Pendiente' ? '⏳ Pendiente' : '✅ Pagado'}
+                              </span>
+                            </td>
+                            <td className="p-4 text-gray-500">{venta.items} artículo{venta.items != 1 ? 's' : ''}</td>
+                            <td className="p-4 font-bold">Q{parseFloat(venta.total).toFixed(2)}</td>
+                            <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              {venta.estado === 'Pendiente' && (
+                                <button onClick={() => marcarVentaPagada(venta.id)} className="bg-green-100 text-green-700 hover:bg-green-200 text-xs font-bold px-2.5 py-1 rounded transition">Marcar Cobrada</button>
+                              )}
+                            </td>
+                          </tr>
+                          {ventaExpandida === venta.id && (
+                            <tr>
+                              <td colSpan={7} className="p-4 bg-gray-50">
+                                {!detalleVenta[venta.id] ? <p className="text-xs text-gray-400">Cargando detalle...</p> : (
+                                  <div className="divide-y">
+                                    {detalleVenta[venta.id].map((item, i) => (
+                                      <div key={i} className="py-2 flex justify-between text-sm">
+                                        <div>
+                                          <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
+                                          <p className="text-xs text-gray-400">{item.cantidad} × Q{parseFloat(item.precio_unitario).toFixed(2)}</p>
+                                        </div>
+                                        <span className="font-bold text-gray-800">Q{parseFloat(item.subtotal).toFixed(2)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Historial de Compras */}
+              <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                <div className="p-5 border-b">
+                  <h3 className="font-bold text-gray-900">📦 Historial de Compras</h3>
+                </div>
+                {reportes.historialCompras.length === 0 ? (
+                  <p className="text-gray-400 text-sm p-5">Aún no se ha registrado ninguna compra.</p>
+                ) : (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
+                      <tr>
+                        <th className="p-4">Compra</th>
+                        <th className="p-4">Fecha</th>
+                        <th className="p-4">Proveedor</th>
+                        <th className="p-4">Artículos</th>
+                        <th className="p-4">Total</th>
+                        <th className="p-4"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {reportes.historialCompras.map(compra => (
+                        <React.Fragment key={compra.id}>
+                          <tr onClick={() => alternarDetalleCompra(compra.id)} className="hover:bg-gray-50 transition cursor-pointer">
+                            <td className="p-4 sku text-gray-400">#{compra.id}</td>
+                            <td className="p-4 text-gray-700">{new Date(compra.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                            <td className="p-4 text-gray-500">{compra.proveedor || '—'}</td>
+                            <td className="p-4 text-gray-500">{compra.items} artículo{compra.items != 1 ? 's' : ''}</td>
+                            <td className="p-4 font-bold">Q{parseFloat(compra.total).toFixed(2)}</td>
+                            <td className="p-4 text-right text-gray-400">{compraExpandida === compra.id ? '▲' : '▼'}</td>
+                          </tr>
+                          {compraExpandida === compra.id && (
+                            <tr>
+                              <td colSpan={6} className="p-4 bg-gray-50">
+                                {!detalleCompra[compra.id] ? <p className="text-xs text-gray-400">Cargando detalle...</p> : (
+                                  <div className="divide-y">
+                                    {detalleCompra[compra.id].map((item, i) => (
+                                      <div key={i} className="py-2 flex justify-between text-sm">
+                                        <div>
+                                          <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
+                                          <p className="text-xs text-gray-400">{item.cantidad} × Q{parseFloat(item.costo_unitario).toFixed(2)}</p>
+                                        </div>
+                                        <span className="font-bold text-gray-800">Q{parseFloat(item.subtotal).toFixed(2)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
               </div>
             )}
 
-            {/* GESTION DE CATALOGOS: selector Nuevo Producto / Venta / Compra */}
+            {/* GESTION DE CATALOGOS: Nuevo Producto / Venta / Compra (modo elegido desde el sidebar) */}
             {subSeccionAdmin === 'nuevo-producto' && (
               <div className="space-y-6">
-                <div className="flex space-x-1 bg-white border rounded-lg p-1 w-fit">
-                  <button onClick={() => setModoCatalogo('producto')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${modoCatalogo === 'producto' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📦 Nuevo Producto</button>
-                  <button onClick={() => setModoCatalogo('venta')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${modoCatalogo === 'venta' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>💵 Registrar Venta</button>
-                  <button onClick={() => setModoCatalogo('compra')} className={`px-4 py-1.5 rounded-md font-semibold text-sm transition ${modoCatalogo === 'compra' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>📥 Registrar Compra</button>
-                </div>
 
                 {modoCatalogo === 'venta' && (
                 <div className="space-y-6">
@@ -605,77 +831,7 @@ export default function App() {
                   <button onClick={registrarVenta} className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}>
                     {tipoVentaNueva === 'Crédito' ? '🧾 Registrar Venta a Crédito' : '✅ Registrar Venta al Contado'}
                   </button>
-                </div>
-
-                {/* Historial reciente de Ventas */}
-                <div className="bg-white rounded-xl border shadow-sm overflow-hidden lg:col-span-2">
-                  <div className="p-5 border-b">
-                    <h3 className="font-bold text-gray-900">🧾 Ventas Recientes</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Toca una fila para ver los productos. Las ventas a crédito se pueden marcar como cobradas.</p>
-                  </div>
-                  {reportes.historialVentas.length === 0 ? (
-                    <p className="text-gray-400 text-sm p-5">Aún no se ha registrado ninguna venta.</p>
-                  ) : (
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
-                        <tr>
-                          <th className="p-4">Venta</th>
-                          <th className="p-4">Fecha</th>
-                          <th className="p-4">Tipo</th>
-                          <th className="p-4">Estado</th>
-                          <th className="p-4">Artículos</th>
-                          <th className="p-4">Total</th>
-                          <th className="p-4"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {reportes.historialVentas.map(venta => (
-                          <React.Fragment key={venta.id}>
-                            <tr onClick={() => alternarDetalleVenta(venta.id)} className="hover:bg-gray-50 transition cursor-pointer">
-                              <td className="p-4 sku text-gray-400">#{venta.id}</td>
-                              <td className="p-4 text-gray-700">{new Date(venta.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                              <td className="p-4">
-                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${venta.tipo_venta === 'Crédito' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-700'}`}>
-                                  {venta.tipo_venta === 'Crédito' ? '🧾 Crédito' : '💵 Contado'}
-                                </span>
-                              </td>
-                              <td className="p-4">
-                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${venta.estado === 'Pendiente' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                  {venta.estado === 'Pendiente' ? '⏳ Pendiente' : '✅ Pagado'}
-                                </span>
-                              </td>
-                              <td className="p-4 text-gray-500">{venta.items} artículo{venta.items != 1 ? 's' : ''}</td>
-                              <td className="p-4 font-bold">Q{parseFloat(venta.total).toFixed(2)}</td>
-                              <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                {venta.estado === 'Pendiente' && (
-                                  <button onClick={() => marcarVentaPagada(venta.id)} className="bg-green-100 text-green-700 hover:bg-green-200 text-xs font-bold px-2.5 py-1 rounded transition">Marcar Cobrada</button>
-                                )}
-                              </td>
-                            </tr>
-                            {ventaExpandida === venta.id && (
-                              <tr>
-                                <td colSpan={7} className="p-4 bg-gray-50">
-                                  {!detalleVenta[venta.id] ? <p className="text-xs text-gray-400">Cargando detalle...</p> : (
-                                    <div className="divide-y">
-                                      {detalleVenta[venta.id].map((item, i) => (
-                                        <div key={i} className="py-2 flex justify-between text-sm">
-                                          <div>
-                                            <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
-                                            <p className="text-xs text-gray-400">{item.cantidad} × Q{parseFloat(item.precio_unitario).toFixed(2)}</p>
-                                          </div>
-                                          <span className="font-bold text-gray-800">Q{parseFloat(item.subtotal).toFixed(2)}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                  <p className="text-[11px] text-gray-400 text-center">📊 El historial de ventas ahora vive en la sección Reportes.</p>
                 </div>
 
                 </div>
@@ -756,62 +912,7 @@ export default function App() {
                     <span>Total:</span><span>Q{calcularTotalCompra()}</span>
                   </div>
                   <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">📥 Registrar Compra</button>
-                </div>
-
-                {/* Historial reciente de Compras */}
-                <div className="bg-white rounded-xl border shadow-sm overflow-hidden lg:col-span-2">
-                  <div className="p-5 border-b">
-                    <h3 className="font-bold text-gray-900">📦 Compras Recientes</h3>
-                  </div>
-                  {reportes.historialCompras.length === 0 ? (
-                    <p className="text-gray-400 text-sm p-5">Aún no se ha registrado ninguna compra.</p>
-                  ) : (
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
-                        <tr>
-                          <th className="p-4">Compra</th>
-                          <th className="p-4">Fecha</th>
-                          <th className="p-4">Proveedor</th>
-                          <th className="p-4">Artículos</th>
-                          <th className="p-4">Total</th>
-                          <th className="p-4"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {reportes.historialCompras.map(compra => (
-                          <React.Fragment key={compra.id}>
-                            <tr onClick={() => alternarDetalleCompra(compra.id)} className="hover:bg-gray-50 transition cursor-pointer">
-                              <td className="p-4 sku text-gray-400">#{compra.id}</td>
-                              <td className="p-4 text-gray-700">{new Date(compra.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                              <td className="p-4 text-gray-500">{compra.proveedor || '—'}</td>
-                              <td className="p-4 text-gray-500">{compra.items} artículo{compra.items != 1 ? 's' : ''}</td>
-                              <td className="p-4 font-bold">Q{parseFloat(compra.total).toFixed(2)}</td>
-                              <td className="p-4 text-right text-gray-400">{compraExpandida === compra.id ? '▲' : '▼'}</td>
-                            </tr>
-                            {compraExpandida === compra.id && (
-                              <tr>
-                                <td colSpan={6} className="p-4 bg-gray-50">
-                                  {!detalleCompra[compra.id] ? <p className="text-xs text-gray-400">Cargando detalle...</p> : (
-                                    <div className="divide-y">
-                                      {detalleCompra[compra.id].map((item, i) => (
-                                        <div key={i} className="py-2 flex justify-between text-sm">
-                                          <div>
-                                            <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
-                                            <p className="text-xs text-gray-400">{item.cantidad} × Q{parseFloat(item.costo_unitario).toFixed(2)}</p>
-                                          </div>
-                                          <span className="font-bold text-gray-800">Q{parseFloat(item.subtotal).toFixed(2)}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                  <p className="text-[11px] text-gray-400 text-center">📊 El historial de compras ahora vive en la sección Reportes.</p>
                 </div>
 
                 </div>
@@ -993,9 +1094,10 @@ export default function App() {
               </div>
             )}
 
-          </>
-        )}
-      </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
