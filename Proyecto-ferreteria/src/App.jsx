@@ -327,20 +327,93 @@ export default function App() {
   // --------------------------------------------------------
   // EXPORTAR A EXCEL (CSV)
   // --------------------------------------------------------
-  const exportarAExcel = () => {
-    // Se añade BOM (\uFEFF) para que Excel reconozca los caracteres especiales (tildes, ñ)
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFFID;Producto;Marca;Precio;Stock\n";
+  const exportarReportesExcel = () => {
+    const hoy = new Date().toLocaleDateString('es-GT', { day: '2-digit', month: 'long', year: 'numeric' });
+    const linea = (...campos) => campos.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';') + '\n';
+    const seccion = (titulo) => `\n${titulo}\n`;
+    const nombrePeriodo = { semana: 'Esta Semana vs Semana Anterior', mes: 'Este Mes vs Mes Anterior', anio: 'Este Año vs Año Anterior' };
 
-    productosFiltradosAdmin.forEach(p => {
-      // Se reemplazan comillas dobles para evitar roturas y se usa punto y coma (;) como separador para Excel
-      const nombreLimpio = p.nombre.replace(/"/g, '""');
-      csvContent += `"${p.id}";"${nombreLimpio}";"${p.marca || ''}";"${p.precio}";"${p.cantidad_stock}"\n`;
+    // Se añade BOM (\uFEFF) para que Excel reconozca tildes y ñ correctamente
+    let csv = "\uFEFF";
+    csv += linea(`Reporte General - FerreSistema Pro`);
+    csv += linea(`Generado el ${hoy}`);
+
+    // 1. Resumen general
+    csv += seccion('RESUMEN GENERAL');
+    csv += linea('Indicador', 'Valor');
+    csv += linea('Valor Total del Inventario (Q)', reportes.valorInventario.toFixed(2));
+    csv += linea('Productos Registrados', reportes.totalProductos);
+    csv += linea('Productos con Stock Bajo (< 20 uds)', reportes.stockBajoCantidad);
+    csv += linea('Productos Agotados', reportes.agotados);
+    csv += linea('Ganancia de Hoy (Q)', reportes.gananciaHoy.toFixed(2));
+    csv += linea('Ganancia del Mes (Q)', reportes.gananciaMes.toFixed(2));
+    csv += linea('Pendiente de Cobro - Ventas a Crédito (Q)', reportes.pendienteTotal.toFixed(2));
+    csv += linea('Cantidad de Ventas a Crédito sin Cobrar', reportes.pendienteCantidad);
+    csv += linea('Compras del Mes / Invertido en Reabastecimiento (Q)', reportes.comprasMes.toFixed(2));
+
+    // 2. Comparativas por periodo
+    csv += seccion('COMPARATIVA POR PERIODO (ACTUAL VS. ANTERIOR)');
+    csv += linea('Periodo', 'Métrica', 'Actual (Q)', 'Anterior (Q)', 'Variación %');
+    ['semana', 'mes', 'anio'].forEach(periodo => {
+      const datos = reportes.comparativas[periodo];
+      [['Ventas', datos.ventas], ['Compras', datos.compras], ['Ganancia', datos.ganancia]].forEach(([etiqueta, val]) => {
+        const cambio = val.anterior > 0 ? (((val.actual - val.anterior) / val.anterior) * 100) : (val.actual > 0 ? 100 : 0);
+        csv += linea(nombrePeriodo[periodo], etiqueta, val.actual.toFixed(2), val.anterior.toFixed(2), `${cambio >= 0 ? '+' : ''}${cambio.toFixed(1)}%`);
+      });
     });
 
-    const encodedUri = encodeURI(csvContent);
+    // 3. Top 5 con mayor valor en inventario
+    csv += seccion('TOP 5 PRODUCTOS CON MAYOR VALOR EN INVENTARIO');
+    csv += linea('Producto', 'Marca', 'Stock', 'Precio Unitario (Q)', 'Valor Total (Q)');
+    reportes.topValorInventario.forEach(p => {
+      csv += linea(p.nombre, p.marca || '—', parseFloat(p.cantidad_stock), parseFloat(p.precio).toFixed(2), parseFloat(p.valor_total).toFixed(2));
+    });
+
+    // 4. Productos que requieren reabastecimiento
+    csv += seccion('PRODUCTOS QUE REQUIEREN REABASTECIMIENTO');
+    csv += linea('Código', 'Producto', 'Stock Actual');
+    if (reportes.bajoStock.length === 0) {
+      csv += linea('—', 'Buen stock general, sin alertas', '—');
+    } else {
+      reportes.bajoStock.forEach(p => csv += linea(p.id, p.nombre, parseFloat(p.cantidad_stock)));
+    }
+
+    // 5. Valor de inventario por categoría
+    csv += seccion('VALOR DE INVENTARIO POR CATEGORÍA');
+    csv += linea('Categoría', 'Cantidad de Productos', 'Valor Total (Q)');
+    reportes.valorPorCategoria.forEach(c => csv += linea(c.categoria, c.cantidad_productos, parseFloat(c.valor).toFixed(2)));
+
+    // 6. Ventas vs Compras por mes (para la gráfica)
+    csv += seccion('VENTAS VS COMPRAS - ÚLTIMOS 12 MESES');
+    csv += linea('Mes', 'Ventas (Q)', 'Compras (Q)');
+    reportes.serieMensual.forEach(m => csv += linea(m.etiqueta, m.ventas.toFixed(2), m.compras.toFixed(2)));
+
+    // 7. Historial de ventas
+    csv += seccion('HISTORIAL DE VENTAS RECIENTES');
+    csv += linea('Venta #', 'Fecha', 'Tipo', 'Estado', 'Artículos', 'Total (Q)');
+    if (reportes.historialVentas.length === 0) {
+      csv += linea('—', '—', '—', '—', '—', '—');
+    } else {
+      reportes.historialVentas.forEach(v => {
+        csv += linea(v.id, new Date(v.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }), v.tipo_venta, v.estado, v.items, parseFloat(v.total).toFixed(2));
+      });
+    }
+
+    // 8. Historial de compras
+    csv += seccion('HISTORIAL DE COMPRAS RECIENTES');
+    csv += linea('Compra #', 'Fecha', 'Proveedor', 'Artículos', 'Total (Q)');
+    if (reportes.historialCompras.length === 0) {
+      csv += linea('—', '—', '—', '—', '—');
+    } else {
+      reportes.historialCompras.forEach(c => {
+        csv += linea(c.id, new Date(c.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }), c.proveedor || '—', c.items, parseFloat(c.total).toFixed(2));
+      });
+    }
+
+    const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csv);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Inventario_FerreSistema_${new Date().toLocaleDateString()}.csv`);
+    link.setAttribute("download", `Reporte_FerreSistema_${new Date().toLocaleDateString('es-GT').replace(/\//g, '-')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -449,6 +522,16 @@ export default function App() {
             {/* REPORTES DE INVENTARIO */}
             {subSeccionAdmin === 'reportes' && (
               <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">📊 Panel de Reportes</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">Resumen general del negocio, actualizado en tiempo real.</p>
+                  </div>
+                  <button onClick={exportarReportesExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition shrink-0">
+                    📥 Exportar Reporte Completo
+                  </button>
+                </div>
+
                 {/* Tarjetas KPI principales */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-5 rounded-2xl shadow-sm">
@@ -1040,15 +1123,10 @@ export default function App() {
               </div>
             )}
 
-            {/* INVENTARIO MAESTRO CON ACCIONES Y EXCEL */}
+            {/* INVENTARIO MAESTRO CON ACCIONES */}
             {subSeccionAdmin === 'ver-inventario' && (
               <div className="space-y-4">
-                <div className="flex justify-between items-center gap-3">
-                  <input type="text" placeholder="Buscar por nombre o código de producto..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} className="p-2.5 border rounded-lg text-sm w-full max-w-sm" />
-                  <button onClick={exportarAExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition shrink-0">
-                    📥 Exportar a Excel
-                  </button>
-                </div>
+                <input type="text" placeholder="Buscar por nombre o código de producto..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} className="p-2.5 border rounded-lg text-sm w-full max-w-sm" />
 
                 <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                   <table className="w-full text-left text-sm">
