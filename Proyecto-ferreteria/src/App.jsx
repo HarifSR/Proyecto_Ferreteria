@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ExcelJS from 'exceljs';
 import './App.css';
 
 export default function App() {
@@ -327,96 +328,225 @@ export default function App() {
   // --------------------------------------------------------
   // EXPORTAR A EXCEL (CSV)
   // --------------------------------------------------------
-  const exportarReportesExcel = () => {
-    const hoy = new Date().toLocaleDateString('es-GT', { day: '2-digit', month: 'long', year: 'numeric' });
-    const linea = (...campos) => campos.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';') + '\n';
-    const seccion = (titulo) => `\n${titulo}\n`;
-    const nombrePeriodo = { semana: 'Esta Semana vs Semana Anterior', mes: 'Este Mes vs Mes Anterior', anio: 'Este Año vs Año Anterior' };
+  const exportarReportesExcel = async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'FerreSistema Pro';
+    wb.created = new Date();
 
-    // Se añade BOM (\uFEFF) para que Excel reconozca tildes y ñ correctamente
-    let csv = "\uFEFF";
-    csv += linea(`Reporte General - FerreSistema Pro`);
-    csv += linea(`Generado el ${hoy}`);
+    // Paleta de marca (mismos colores del sistema)
+    const NAVY = 'FF171B1F';
+    const AMBER = 'FFF0AE3C';
+    const STEEL = 'FF5B92E5';
+    const GREEN = 'FF2FA85A';
+    const RED = 'FFD6483E';
+    const GRAY_LIGHT = 'FFF3F4F6';
+    const WHITE = 'FFFFFFFF';
+    const MONEDA = '"Q"#,##0.00';
 
-    // 1. Resumen general
-    csv += seccion('RESUMEN GENERAL');
-    csv += linea('Indicador', 'Valor');
-    csv += linea('Valor Total del Inventario (Q)', reportes.valorInventario.toFixed(2));
-    csv += linea('Productos Registrados', reportes.totalProductos);
-    csv += linea('Productos con Stock Bajo (< 20 uds)', reportes.stockBajoCantidad);
-    csv += linea('Productos Agotados', reportes.agotados);
-    csv += linea('Ganancia de Hoy (Q)', reportes.gananciaHoy.toFixed(2));
-    csv += linea('Ganancia del Mes (Q)', reportes.gananciaMes.toFixed(2));
-    csv += linea('Pendiente de Cobro - Ventas a Crédito (Q)', reportes.pendienteTotal.toFixed(2));
-    csv += linea('Cantidad de Ventas a Crédito sin Cobrar', reportes.pendienteCantidad);
-    csv += linea('Compras del Mes / Invertido en Reabastecimiento (Q)', reportes.comprasMes.toFixed(2));
+    const bordeFino = { style: 'thin', color: { argb: 'FFD9D9D9' } };
+    const bordeCelda = { top: bordeFino, left: bordeFino, bottom: bordeFino, right: bordeFino };
 
-    // 2. Comparativas por periodo
-    csv += seccion('COMPARATIVA POR PERIODO (ACTUAL VS. ANTERIOR)');
-    csv += linea('Periodo', 'Métrica', 'Actual (Q)', 'Anterior (Q)', 'Variación %');
+    // Aplica el estilo de encabezado (fondo oscuro, texto blanco) a una fila
+    const estiloEncabezado = (fila, color = NAVY) => {
+      fila.eachCell(celda => {
+        celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+        celda.font = { bold: true, color: { argb: WHITE }, size: 11 };
+        celda.alignment = { vertical: 'middle', horizontal: 'left' };
+        celda.border = bordeCelda;
+      });
+      fila.height = 22;
+    };
+
+    // Sombrea filas alternas y les pone borde, para que sea fácil de leer
+    const estiloFilas = (hoja, desde) => {
+      for (let i = desde; i <= hoja.rowCount; i++) {
+        const fila = hoja.getRow(i);
+        fila.eachCell({ includeEmpty: true }, celda => {
+          celda.border = bordeCelda;
+          if (i % 2 === 0) celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GRAY_LIGHT } };
+        });
+      }
+    };
+
+    const tituloHoja = (hoja, texto) => {
+      hoja.mergeCells(1, 1, 1, Math.max(hoja.columns.length, 2));
+      const celda = hoja.getCell('A1');
+      celda.value = texto;
+      celda.font = { bold: true, size: 14, color: { argb: NAVY } };
+      hoja.getRow(1).height = 26;
+      const sub = hoja.getCell('A2');
+      sub.value = `FerreSistema Pro · Generado el ${new Date().toLocaleDateString('es-GT', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+      sub.font = { italic: true, size: 9, color: { argb: 'FF8A94A0' } };
+      hoja.addRow([]);
+    };
+
+    // ============ HOJA 1: RESUMEN GENERAL ============
+    const hResumen = wb.addWorksheet('Resumen');
+    hResumen.columns = [{ width: 42 }, { width: 22 }];
+    tituloHoja(hResumen, '📊 Resumen General del Negocio');
+    const filaEncResumen = hResumen.addRow(['Indicador', 'Valor']);
+    estiloEncabezado(filaEncResumen, NAVY);
+    const filasResumen = [
+      ['Valor Total del Inventario', reportes.valorInventario, true],
+      ['Productos Registrados', reportes.totalProductos, false],
+      ['Productos con Stock Bajo (< 20 uds)', reportes.stockBajoCantidad, false],
+      ['Productos Agotados', reportes.agotados, false],
+      ['Ganancia de Hoy', reportes.gananciaHoy, true],
+      ['Ganancia del Mes', reportes.gananciaMes, true],
+      ['Pendiente de Cobro (Ventas a Crédito)', reportes.pendienteTotal, true],
+      ['Ventas a Crédito sin Cobrar', reportes.pendienteCantidad, false],
+      ['Compras del Mes (Reabastecimiento)', reportes.comprasMes, true]
+    ];
+    filasResumen.forEach(([etiqueta, valor, esMoneda]) => {
+      const fila = hResumen.addRow([etiqueta, valor]);
+      if (esMoneda) fila.getCell(2).numFmt = MONEDA;
+      fila.getCell(2).font = { bold: true };
+    });
+    estiloFilas(hResumen, 4);
+
+    // ============ HOJA 2: COMPARATIVA POR PERIODO ============
+    const hComp = wb.addWorksheet('Comparativas');
+    hComp.columns = [{ width: 26 }, { width: 14 }, { width: 16 }, { width: 16 }, { width: 14 }];
+    tituloHoja(hComp, '📈 Comparativa por Periodo (Actual vs. Anterior)');
+    const filaEncComp = hComp.addRow(['Periodo', 'Métrica', 'Actual', 'Anterior', 'Variación']);
+    estiloEncabezado(filaEncComp, NAVY);
+    const nombrePeriodo = { semana: 'Semana', mes: 'Mes', anio: 'Año' };
     ['semana', 'mes', 'anio'].forEach(periodo => {
       const datos = reportes.comparativas[periodo];
       [['Ventas', datos.ventas], ['Compras', datos.compras], ['Ganancia', datos.ganancia]].forEach(([etiqueta, val]) => {
-        const cambio = val.anterior > 0 ? (((val.actual - val.anterior) / val.anterior) * 100) : (val.actual > 0 ? 100 : 0);
-        csv += linea(nombrePeriodo[periodo], etiqueta, val.actual.toFixed(2), val.anterior.toFixed(2), `${cambio >= 0 ? '+' : ''}${cambio.toFixed(1)}%`);
+        const cambio = val.anterior > 0 ? ((val.actual - val.anterior) / val.anterior) : (val.actual > 0 ? 1 : 0);
+        const fila = hComp.addRow([nombrePeriodo[periodo], etiqueta, val.actual, val.anterior, cambio]);
+        fila.getCell(3).numFmt = MONEDA;
+        fila.getCell(4).numFmt = MONEDA;
+        fila.getCell(5).numFmt = '+0.0%;-0.0%';
+        fila.getCell(5).font = { bold: true, color: { argb: cambio >= 0 ? GREEN : RED } };
       });
     });
+    estiloFilas(hComp, 4);
 
-    // 3. Top 5 con mayor valor en inventario
-    csv += seccion('TOP 5 PRODUCTOS CON MAYOR VALOR EN INVENTARIO');
-    csv += linea('Producto', 'Marca', 'Stock', 'Precio Unitario (Q)', 'Valor Total (Q)');
+    // ============ HOJA 3: TOP VALOR EN INVENTARIO ============
+    const hTop = wb.addWorksheet('Top Valor Inventario');
+    hTop.columns = [{ width: 34 }, { width: 18 }, { width: 12 }, { width: 16 }, { width: 16 }];
+    tituloHoja(hTop, '💎 Top 5 — Mayor Valor en Inventario');
+    const filaEncTop = hTop.addRow(['Producto', 'Marca', 'Stock', 'Precio Unitario', 'Valor Total']);
+    estiloEncabezado(filaEncTop, AMBER);
     reportes.topValorInventario.forEach(p => {
-      csv += linea(p.nombre, p.marca || '—', parseFloat(p.cantidad_stock), parseFloat(p.precio).toFixed(2), parseFloat(p.valor_total).toFixed(2));
+      const fila = hTop.addRow([p.nombre, p.marca || '—', parseFloat(p.cantidad_stock), parseFloat(p.precio), parseFloat(p.valor_total)]);
+      fila.getCell(4).numFmt = MONEDA;
+      fila.getCell(5).numFmt = MONEDA;
+      fila.getCell(5).font = { bold: true };
     });
+    if (reportes.topValorInventario.length === 0) hTop.addRow(['Aún no hay productos registrados.']);
+    estiloFilas(hTop, 4);
 
-    // 4. Productos que requieren reabastecimiento
-    csv += seccion('PRODUCTOS QUE REQUIEREN REABASTECIMIENTO');
-    csv += linea('Código', 'Producto', 'Stock Actual');
+    // ============ HOJA 4: REABASTECIMIENTO ============
+    const hReab = wb.addWorksheet('Reabastecimiento');
+    hReab.columns = [{ width: 14 }, { width: 40 }, { width: 16 }];
+    tituloHoja(hReab, '⚠️ Requiere Reabastecimiento');
+    const filaEncReab = hReab.addRow(['Código', 'Producto', 'Stock Actual']);
+    estiloEncabezado(filaEncReab, RED);
     if (reportes.bajoStock.length === 0) {
-      csv += linea('—', 'Buen stock general, sin alertas', '—');
+      hReab.addRow(['—', 'Buen stock general, sin alertas.', '—']);
     } else {
-      reportes.bajoStock.forEach(p => csv += linea(p.id, p.nombre, parseFloat(p.cantidad_stock)));
+      reportes.bajoStock.forEach(p => {
+        const fila = hReab.addRow([p.id, p.nombre, parseFloat(p.cantidad_stock)]);
+        fila.getCell(3).font = { bold: true, color: { argb: RED } };
+      });
     }
+    estiloFilas(hReab, 4);
 
-    // 5. Valor de inventario por categoría
-    csv += seccion('VALOR DE INVENTARIO POR CATEGORÍA');
-    csv += linea('Categoría', 'Cantidad de Productos', 'Valor Total (Q)');
-    reportes.valorPorCategoria.forEach(c => csv += linea(c.categoria, c.cantidad_productos, parseFloat(c.valor).toFixed(2)));
+    // ============ HOJA 5: VALOR POR CATEGORÍA ============
+    const hCat = wb.addWorksheet('Categorías');
+    hCat.columns = [{ width: 28 }, { width: 20 }, { width: 18 }];
+    tituloHoja(hCat, '🗂️ Valor de Inventario por Categoría');
+    const filaEncCat = hCat.addRow(['Categoría', 'Cantidad de Productos', 'Valor Total']);
+    estiloEncabezado(filaEncCat, STEEL);
+    reportes.valorPorCategoria.forEach(c => {
+      const fila = hCat.addRow([c.categoria, c.cantidad_productos, parseFloat(c.valor)]);
+      fila.getCell(3).numFmt = MONEDA;
+    });
+    estiloFilas(hCat, 4);
 
-    // 6. Ventas vs Compras por mes (para la gráfica)
-    csv += seccion('VENTAS VS COMPRAS - ÚLTIMOS 12 MESES');
-    csv += linea('Mes', 'Ventas (Q)', 'Compras (Q)');
-    reportes.serieMensual.forEach(m => csv += linea(m.etiqueta, m.ventas.toFixed(2), m.compras.toFixed(2)));
+    // ============ HOJA 6: VENTAS VS COMPRAS (12 MESES) ============
+    const hSerie = wb.addWorksheet('Ventas vs Compras');
+    hSerie.columns = [{ width: 16 }, { width: 16 }, { width: 16 }];
+    tituloHoja(hSerie, '📊 Ventas vs Compras — Últimos 12 Meses');
+    const filaEncSerie = hSerie.addRow(['Mes', 'Ventas', 'Compras']);
+    estiloEncabezado(filaEncSerie, NAVY);
+    reportes.serieMensual.forEach(m => {
+      // Se guarda el mes como TEXTO explícito para que Excel no intente adivinar una fecha y lo corrompa
+      const fila = hSerie.addRow([m.etiqueta, m.ventas, m.compras]);
+      fila.getCell(1).numFmt = '@';
+      fila.getCell(2).numFmt = MONEDA;
+      fila.getCell(3).numFmt = MONEDA;
+    });
+    estiloFilas(hSerie, 4);
 
-    // 7. Historial de ventas
-    csv += seccion('HISTORIAL DE VENTAS RECIENTES');
-    csv += linea('Venta #', 'Fecha', 'Tipo', 'Estado', 'Artículos', 'Total (Q)');
-    if (reportes.historialVentas.length === 0) {
-      csv += linea('—', '—', '—', '—', '—', '—');
+    // ============ HOJA 7: HISTORIAL DE VENTAS ============
+    const hVentas = wb.addWorksheet('Historial Ventas');
+    hVentas.columns = [{ width: 10 }, { width: 20 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 14 }];
+    tituloHoja(hVentas, '🧾 Historial de Ventas Recientes');
+    const filaEncVentas = hVentas.addRow(['Venta #', 'Fecha', 'Tipo', 'Estado', 'Artículos', 'Total']);
+    estiloEncabezado(filaEncVentas, NAVY);
+    if (!reportes.historialVentas || reportes.historialVentas.length === 0) {
+      hVentas.addRow(['—', 'Aún no se ha registrado ninguna venta.', '', '', '', '']);
     } else {
       reportes.historialVentas.forEach(v => {
-        csv += linea(v.id, new Date(v.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }), v.tipo_venta, v.estado, v.items, parseFloat(v.total).toFixed(2));
+        const fila = hVentas.addRow([
+          v.id,
+          new Date(v.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }),
+          v.tipo_venta,
+          v.estado,
+          v.items,
+          parseFloat(v.total)
+        ]);
+        fila.getCell(6).numFmt = MONEDA;
+        fila.getCell(6).font = { bold: true };
+        fila.getCell(4).font = { bold: true, color: { argb: v.estado === 'Pendiente' ? RED : GREEN } };
+        fila.getCell(3).font = { bold: true, color: { argb: v.tipo_venta === 'Crédito' ? AMBER : STEEL } };
       });
     }
+    estiloFilas(hVentas, 4);
 
-    // 8. Historial de compras
-    csv += seccion('HISTORIAL DE COMPRAS RECIENTES');
-    csv += linea('Compra #', 'Fecha', 'Proveedor', 'Artículos', 'Total (Q)');
-    if (reportes.historialCompras.length === 0) {
-      csv += linea('—', '—', '—', '—', '—');
+    // ============ HOJA 8: HISTORIAL DE COMPRAS ============
+    const hCompras = wb.addWorksheet('Historial Compras');
+    hCompras.columns = [{ width: 10 }, { width: 20 }, { width: 22 }, { width: 12 }, { width: 14 }];
+    tituloHoja(hCompras, '📦 Historial de Compras Recientes');
+    const filaEncCompras = hCompras.addRow(['Compra #', 'Fecha', 'Proveedor', 'Artículos', 'Total']);
+    estiloEncabezado(filaEncCompras, STEEL);
+    if (!reportes.historialCompras || reportes.historialCompras.length === 0) {
+      hCompras.addRow(['—', 'Aún no se ha registrado ninguna compra.', '', '', '']);
     } else {
       reportes.historialCompras.forEach(c => {
-        csv += linea(c.id, new Date(c.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }), c.proveedor || '—', c.items, parseFloat(c.total).toFixed(2));
+        const fila = hCompras.addRow([
+          c.id,
+          new Date(c.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }),
+          c.proveedor || '—',
+          c.items,
+          parseFloat(c.total)
+        ]);
+        fila.getCell(5).numFmt = MONEDA;
+        fila.getCell(5).font = { bold: true };
       });
     }
+    estiloFilas(hCompras, 4);
 
-    const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csv);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Reporte_FerreSistema_${new Date().toLocaleDateString('es-GT').replace(/\//g, '-')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Generar el archivo y descargarlo
+    try {
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Reporte_FerreSistema_${new Date().toLocaleDateString('es-GT').replace(/\//g, '-')}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al generar el Excel:', error);
+      alert('⚠️ No se pudo generar el archivo de Excel. Revisa la consola.');
+    }
   };
 
   // --------------------------------------------------------
