@@ -64,7 +64,8 @@ export default function App() {
       mes: { ventas: { actual: 0, anterior: 0 }, compras: { actual: 0, anterior: 0 }, ganancia: { actual: 0, anterior: 0 } },
       anio: { ventas: { actual: 0, anterior: 0 }, compras: { actual: 0, anterior: 0 }, ganancia: { actual: 0, anterior: 0 } }
     },
-    serieMensual: []
+    serieMensual: [],
+    masVendidos: [], menosVendidos: [], ventasPorProducto: []
   });
 
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
@@ -519,6 +520,45 @@ export default function App() {
     });
     estiloFilas(hSerie, 4);
 
+    // ============ HOJA 6.1: TOP 10 MÁS VENDIDOS ============
+    const hMasVendidos = wb.addWorksheet('Más Vendidos');
+    hMasVendidos.columns = [{ width: 6 }, { width: 34 }, { width: 18 }, { width: 14 }, { width: 16 }];
+    tituloHoja(hMasVendidos, 'Top 10 Productos Más Vendidos');
+    const filaEncMasVendidos = hMasVendidos.addRow(['#', 'Producto', 'Marca', 'Cantidad Vendida', 'Ingresos']);
+    estiloEncabezado(filaEncMasVendidos, GREEN);
+    reportes.masVendidos.forEach((p, idx) => {
+      const fila = hMasVendidos.addRow([idx + 1, p.nombre, p.marca || '—', p.cantidadVendida, p.ingresos]);
+      fila.getCell(5).numFmt = MONEDA;
+    });
+    if (reportes.masVendidos.length === 0) hMasVendidos.addRow(['—', 'Aún no hay ventas registradas.', '', '', '']);
+    estiloFilas(hMasVendidos, 4);
+
+    // ============ HOJA 6.2: TOP 10 MENOS VENDIDOS ============
+    const hMenosVendidos = wb.addWorksheet('Menos Vendidos');
+    hMenosVendidos.columns = [{ width: 6 }, { width: 34 }, { width: 18 }, { width: 14 }, { width: 16 }];
+    tituloHoja(hMenosVendidos, 'Top 10 Productos Menos Vendidos');
+    const filaEncMenosVendidos = hMenosVendidos.addRow(['#', 'Producto', 'Marca', 'Cantidad Vendida', 'Ingresos']);
+    estiloEncabezado(filaEncMenosVendidos, RED);
+    reportes.menosVendidos.forEach((p, idx) => {
+      const fila = hMenosVendidos.addRow([idx + 1, p.nombre, p.marca || '—', p.cantidadVendida, p.ingresos]);
+      fila.getCell(5).numFmt = MONEDA;
+    });
+    if (reportes.menosVendidos.length === 0) hMenosVendidos.addRow(['—', 'Aún no hay productos registrados.', '', '', '']);
+    estiloFilas(hMenosVendidos, 4);
+
+    // ============ HOJA 6.3: VENTAS POR PRODUCTO (TODOS, DETALLADO) ============
+    const hVentasProducto = wb.addWorksheet('Ventas por Producto');
+    hVentasProducto.columns = [{ width: 34 }, { width: 18 }, { width: 16 }, { width: 16 }];
+    tituloHoja(hVentasProducto, 'Cantidad Vendida por Producto (Histórico Completo)');
+    const filaEncVentasProducto = hVentasProducto.addRow(['Producto', 'Marca', 'Cantidad Vendida', 'Ingresos']);
+    estiloEncabezado(filaEncVentasProducto, STEEL);
+    reportes.ventasPorProducto.forEach(p => {
+      const fila = hVentasProducto.addRow([p.nombre, p.marca || '—', p.cantidadVendida, p.ingresos]);
+      fila.getCell(4).numFmt = MONEDA;
+    });
+    if (reportes.ventasPorProducto.length === 0) hVentasProducto.addRow(['Aún no hay productos registrados.', '', '', '']);
+    estiloFilas(hVentasProducto, 4);
+
     // ============ HOJA 7: HISTORIAL DE VENTAS ============
     const hVentas = wb.addWorksheet('Historial Ventas');
     hVentas.columns = [{ width: 10 }, { width: 20 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 14 }];
@@ -732,7 +772,7 @@ export default function App() {
                     <p className="text-2xl font-black text-green-600 mt-2">Q{reportes.gananciaMes.toFixed(2)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">⏳ Pendiente de Cobro</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Pendiente de Cobro</p>
                     <p className="text-2xl font-black text-orange-600 mt-2">Q{reportes.pendienteTotal.toFixed(2)}</p>
                     <p className="text-xs text-gray-400 mt-1">{reportes.pendienteCantidad} venta{reportes.pendienteCantidad != 1 ? 's' : ''} a crédito sin cobrar</p>
                   </div>
@@ -770,6 +810,41 @@ export default function App() {
                             <p className="text-xs text-gray-400">ID: {prod.id}</p>
                           </div>
                           <span className="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-1 rounded">Quedan: {parseFloat(prod.cantidad_stock)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top 10 más vendidos / menos vendidos */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white p-5 rounded-xl border shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-1">Top 10 Más Vendidos</h3>
+                    <p className="text-xs text-gray-400 mb-4">Cantidad total vendida hasta el momento.</p>
+                    <div className="divide-y text-sm">
+                      {reportes.masVendidos.length === 0 ? <p className="text-gray-400 py-2">Aún no hay ventas registradas.</p> : reportes.masVendidos.map((prod, idx) => (
+                        <div key={prod.id} className="py-2.5 flex justify-between items-center">
+                          <div>
+                            <p className="font-bold text-gray-800">{idx + 1}. {prod.nombre}</p>
+                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}Ingresos: Q{prod.ingresos.toFixed(2)}</p>
+                          </div>
+                          <span className="bg-green-100 text-green-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">{prod.cantidadVendida} uds</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-xl border shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-1">Top 10 Menos Vendidos</h3>
+                    <p className="text-xs text-gray-400 mb-4">Productos que casi no se mueven (incluye los que nunca se han vendido).</p>
+                    <div className="divide-y text-sm">
+                      {reportes.menosVendidos.length === 0 ? <p className="text-gray-400 py-2">Aún no hay productos registrados.</p> : reportes.menosVendidos.map((prod, idx) => (
+                        <div key={prod.id} className="py-2.5 flex justify-between items-center">
+                          <div>
+                            <p className="font-bold text-gray-800">{idx + 1}. {prod.nombre}</p>
+                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}Ingresos: Q{prod.ingresos.toFixed(2)}</p>
+                          </div>
+                          <span className="bg-red-100 text-red-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">{prod.cantidadVendida} uds</span>
                         </div>
                       ))}
                     </div>
