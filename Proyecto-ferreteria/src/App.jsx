@@ -1,6 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import ExcelJS from 'exceljs';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 import './App.css';
+
+// ---- SweetAlert2 con la misma estética oscura del sistema ----
+const swalBase = {
+  background: '#1A1E24',
+  color: '#F1F3F6',
+  buttonsStyling: true,
+  customClass: { popup: 'swal-ferre' }
+};
+
+const alertaExito = (mensaje) => Swal.fire({
+  ...swalBase, icon: 'success', title: mensaje,
+  confirmButtonColor: '#3FBE6B'
+});
+
+const alertaError = (mensaje, titulo = 'Ocurrió un error') => Swal.fire({
+  ...swalBase, icon: 'error', title: titulo, text: mensaje,
+  confirmButtonColor: '#D6483E'
+});
+
+const alertaAdvertencia = (mensaje) => Swal.fire({
+  ...swalBase, icon: 'warning', title: mensaje,
+  confirmButtonColor: '#F0AE3C'
+});
+
+const confirmarAccion = async (titulo, texto, textoConfirmar = 'Sí, continuar') => {
+  const resultado = await Swal.fire({
+    ...swalBase, icon: 'warning', title: titulo, text: texto,
+    showCancelButton: true,
+    confirmButtonText: textoConfirmar,
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#D6483E',
+    cancelButtonColor: '#2A3038'
+  });
+  return resultado.isConfirmed;
+};
 
 export default function App() {
   const [productos, setProductos] = useState([]);
@@ -97,11 +134,11 @@ export default function App() {
       } else {
         const data = await res.json().catch(() => ({}));
         console.error("Error al cargar reportes:", res.status, data.error);
-        alert(`⚠️ No se pudieron cargar los reportes (${res.status}). ${data.error || 'Revisa la consola del servidor.'}`);
+        alertaAdvertencia(`No se pudieron cargar los reportes (${res.status}). ${data.error || 'Revisa la consola del servidor.'}`);
       }
     } catch (error) {
       console.error("Error reportes:", error);
-      alert("⚠️ No se pudo conectar con el servidor para cargar los reportes.");
+      alertaError("No se pudo conectar con el servidor para cargar los reportes.");
     }
   };
 
@@ -119,10 +156,10 @@ export default function App() {
   // REGISTRO DE VENTAS (Contado suma a la ganancia, Crédito queda pendiente)
   // --------------------------------------------------------
   const agregarLineaVenta = () => {
-    if (!productoVentaSel) { alert("Selecciona un producto."); return; }
+    if (!productoVentaSel) { alertaAdvertencia("Selecciona un producto."); return; }
     const producto = productos.find(p => p.id === productoVentaSel);
     const cantidad = parseFloat(cantidadVentaSel);
-    if (!cantidad || cantidad <= 0) { alert("Ingresa una cantidad válida."); return; }
+    if (!cantidad || cantidad <= 0) { alertaAdvertencia("Ingresa una cantidad válida."); return; }
 
     const existente = lineasVenta.find(l => l.producto_id === producto.id);
     if (existente) {
@@ -143,7 +180,7 @@ export default function App() {
   const calcularTotalVenta = () => lineasVenta.reduce((acc, l) => acc + (l.precio_unitario * l.cantidad), 0).toFixed(2);
 
   const registrarVenta = async () => {
-    if (lineasVenta.length === 0) { alert("Agrega al menos un producto a la venta."); return; }
+    if (lineasVenta.length === 0) { alertaAdvertencia("Agrega al menos un producto a la venta."); return; }
     try {
       const res = await fetch('http://localhost:5000/api/ventas', {
         method: 'POST',
@@ -152,26 +189,26 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.mensaje);
+        alertaExito(data.mensaje);
         setLineasVenta([]);
         setTipoVentaNueva('Contado');
         cargarInventario();
         cargarReportesDashboard();
       } else {
-        alert("❌ " + data.error);
+        alertaError(data.error);
       }
-    } catch (error) { alert("Error al registrar la venta."); }
+    } catch (error) { alertaError("Error al registrar la venta."); }
   };
 
   const marcarVentaPagada = async (id) => {
-    if (!window.confirm("¿Confirmas que esta venta a crédito ya fue cobrada?")) return;
+    if (!(await confirmarAccion("¿Marcar como cobrada?", "Confirmas que esta venta a crédito ya fue cobrada.", "Sí, marcar cobrada"))) return;
     try {
       const res = await fetch(`http://localhost:5000/api/ventas/${id}/pagar`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) { cargarReportesDashboard(); }
-    } catch (error) { alert("Error al actualizar la venta."); }
+    } catch (error) { alertaError("Error al actualizar la venta."); }
   };
 
   const alternarDetalleVenta = async (id) => {
@@ -189,12 +226,12 @@ export default function App() {
   // REGISTRO DE COMPRAS (reabastecimiento: aumenta el stock)
   // --------------------------------------------------------
   const agregarLineaCompra = () => {
-    if (!productoCompraSel) { alert("Selecciona un producto."); return; }
+    if (!productoCompraSel) { alertaAdvertencia("Selecciona un producto."); return; }
     const producto = productos.find(p => p.id === productoCompraSel);
     const cantidad = parseFloat(cantidadCompraSel);
     const costo = parseFloat(costoCompraSel);
-    if (!cantidad || cantidad <= 0) { alert("Ingresa una cantidad válida."); return; }
-    if (!costo || costo < 0) { alert("Ingresa el costo unitario de compra."); return; }
+    if (!cantidad || cantidad <= 0) { alertaAdvertencia("Ingresa una cantidad válida."); return; }
+    if (!costo || costo < 0) { alertaAdvertencia("Ingresa el costo unitario de compra."); return; }
 
     const existente = lineasCompra.find(l => l.producto_id === producto.id);
     if (existente) {
@@ -211,7 +248,7 @@ export default function App() {
   const calcularTotalCompra = () => lineasCompra.reduce((acc, l) => acc + (l.costo_unitario * l.cantidad), 0).toFixed(2);
 
   const registrarCompra = async () => {
-    if (lineasCompra.length === 0) { alert("Agrega al menos un producto a la compra."); return; }
+    if (lineasCompra.length === 0) { alertaAdvertencia("Agrega al menos un producto a la compra."); return; }
     try {
       const res = await fetch('http://localhost:5000/api/compras', {
         method: 'POST',
@@ -220,15 +257,15 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.mensaje);
+        alertaExito(data.mensaje);
         setLineasCompra([]);
         setProveedorCompra('');
         cargarInventario();
         cargarReportesDashboard();
       } else {
-        alert("❌ " + data.error);
+        alertaError(data.error);
       }
-    } catch (error) { alert("Error al registrar la compra."); }
+    } catch (error) { alertaError("Error al registrar la compra."); }
   };
 
   const alternarDetalleCompra = async (id) => {
@@ -248,7 +285,7 @@ export default function App() {
   const manejarGuardarProducto = async (e) => {
     e.preventDefault();
     if (!nuevoProd.nombre || !nuevoProd.precio || !nuevoProd.id) {
-      alert("Por favor, rellena los campos principales.");
+      alertaAdvertencia("Por favor, rellena los campos principales.");
       return;
     }
 
@@ -278,15 +315,15 @@ export default function App() {
       });
 
       if (res.ok) {
-        alert(`✅ Producto ${modoEdicion ? 'actualizado' : 'registrado'} con éxito.`);
+        alertaExito(`Producto ${modoEdicion ? 'actualizado' : 'registrado'} con éxito.`);
         limpiarFormulario();
         cargarInventario();
         setSubSeccionAdmin('ver-inventario');
       } else {
         const data = await res.json();
-        alert("❌ Error: " + data.error);
+        alertaError(data.error);
       }
-    } catch (error) { alert("Error crítico al guardar el producto."); }
+    } catch (error) { alertaError("Error crítico al guardar el producto."); }
   };
 
   const iniciarEdicion = (producto) => {
@@ -312,17 +349,17 @@ export default function App() {
   };
 
   const manejarEliminarProducto = async (id_producto) => {
-    if (!window.confirm(`¿Seguro de eliminar el producto ${id_producto}?`)) return;
+    if (!(await confirmarAccion("¿Eliminar producto?", `Se eliminará permanentemente el producto ${id_producto}.`, "Sí, eliminar"))) return;
     try {
       const res = await fetch(`http://localhost:5000/api/productos/${id_producto}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        alert("🗑️ Producto eliminado.");
+        alertaExito("Producto eliminado.");
         cargarInventario();
       }
-    } catch (error) { alert("Error al eliminar."); }
+    } catch (error) { alertaError("Error al eliminar."); }
   };
 
   // --------------------------------------------------------
@@ -383,7 +420,7 @@ export default function App() {
     // ============ HOJA 1: RESUMEN GENERAL ============
     const hResumen = wb.addWorksheet('Resumen');
     hResumen.columns = [{ width: 42 }, { width: 22 }];
-    tituloHoja(hResumen, '📊 Resumen General del Negocio');
+    tituloHoja(hResumen, 'Resumen General del Negocio');
     const filaEncResumen = hResumen.addRow(['Indicador', 'Valor']);
     estiloEncabezado(filaEncResumen, NAVY);
     const filasResumen = [
@@ -407,7 +444,7 @@ export default function App() {
     // ============ HOJA 2: COMPARATIVA POR PERIODO ============
     const hComp = wb.addWorksheet('Comparativas');
     hComp.columns = [{ width: 26 }, { width: 14 }, { width: 16 }, { width: 16 }, { width: 14 }];
-    tituloHoja(hComp, '📈 Comparativa por Periodo (Actual vs. Anterior)');
+    tituloHoja(hComp, 'Comparativa por Periodo (Actual vs. Anterior)');
     const filaEncComp = hComp.addRow(['Periodo', 'Métrica', 'Actual', 'Anterior', 'Variación']);
     estiloEncabezado(filaEncComp, NAVY);
     const nombrePeriodo = { semana: 'Semana', mes: 'Mes', anio: 'Año' };
@@ -427,7 +464,7 @@ export default function App() {
     // ============ HOJA 3: TOP VALOR EN INVENTARIO ============
     const hTop = wb.addWorksheet('Top Valor Inventario');
     hTop.columns = [{ width: 34 }, { width: 18 }, { width: 12 }, { width: 16 }, { width: 16 }];
-    tituloHoja(hTop, '💎 Top 5 — Mayor Valor en Inventario');
+    tituloHoja(hTop, 'Top 5 — Mayor Valor en Inventario');
     const filaEncTop = hTop.addRow(['Producto', 'Marca', 'Stock', 'Precio Unitario', 'Valor Total']);
     estiloEncabezado(filaEncTop, AMBER);
     reportes.topValorInventario.forEach(p => {
@@ -442,7 +479,7 @@ export default function App() {
     // ============ HOJA 4: REABASTECIMIENTO ============
     const hReab = wb.addWorksheet('Reabastecimiento');
     hReab.columns = [{ width: 14 }, { width: 40 }, { width: 16 }];
-    tituloHoja(hReab, '⚠️ Requiere Reabastecimiento');
+    tituloHoja(hReab, 'Requiere Reabastecimiento');
     const filaEncReab = hReab.addRow(['Código', 'Producto', 'Stock Actual']);
     estiloEncabezado(filaEncReab, RED);
     if (reportes.bajoStock.length === 0) {
@@ -458,7 +495,7 @@ export default function App() {
     // ============ HOJA 5: VALOR POR CATEGORÍA ============
     const hCat = wb.addWorksheet('Categorías');
     hCat.columns = [{ width: 28 }, { width: 20 }, { width: 18 }];
-    tituloHoja(hCat, '🗂️ Valor de Inventario por Categoría');
+    tituloHoja(hCat, 'Valor de Inventario por Categoría');
     const filaEncCat = hCat.addRow(['Categoría', 'Cantidad de Productos', 'Valor Total']);
     estiloEncabezado(filaEncCat, STEEL);
     reportes.valorPorCategoria.forEach(c => {
@@ -470,7 +507,7 @@ export default function App() {
     // ============ HOJA 6: VENTAS VS COMPRAS (12 MESES) ============
     const hSerie = wb.addWorksheet('Ventas vs Compras');
     hSerie.columns = [{ width: 16 }, { width: 16 }, { width: 16 }];
-    tituloHoja(hSerie, '📊 Ventas vs Compras — Últimos 12 Meses');
+    tituloHoja(hSerie, 'Ventas vs Compras — Últimos 12 Meses');
     const filaEncSerie = hSerie.addRow(['Mes', 'Ventas', 'Compras']);
     estiloEncabezado(filaEncSerie, NAVY);
     reportes.serieMensual.forEach(m => {
@@ -485,7 +522,7 @@ export default function App() {
     // ============ HOJA 7: HISTORIAL DE VENTAS ============
     const hVentas = wb.addWorksheet('Historial Ventas');
     hVentas.columns = [{ width: 10 }, { width: 20 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 14 }];
-    tituloHoja(hVentas, '🧾 Historial de Ventas Recientes');
+    tituloHoja(hVentas, 'Historial de Ventas Recientes');
     const filaEncVentas = hVentas.addRow(['Venta #', 'Fecha', 'Tipo', 'Estado', 'Artículos', 'Total']);
     estiloEncabezado(filaEncVentas, NAVY);
     if (!reportes.historialVentas || reportes.historialVentas.length === 0) {
@@ -511,7 +548,7 @@ export default function App() {
     // ============ HOJA 8: HISTORIAL DE COMPRAS ============
     const hCompras = wb.addWorksheet('Historial Compras');
     hCompras.columns = [{ width: 10 }, { width: 20 }, { width: 22 }, { width: 12 }, { width: 14 }];
-    tituloHoja(hCompras, '📦 Historial de Compras Recientes');
+    tituloHoja(hCompras, 'Historial de Compras Recientes');
     const filaEncCompras = hCompras.addRow(['Compra #', 'Fecha', 'Proveedor', 'Artículos', 'Total']);
     estiloEncabezado(filaEncCompras, STEEL);
     if (!reportes.historialCompras || reportes.historialCompras.length === 0) {
@@ -545,7 +582,7 @@ export default function App() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error al generar el Excel:', error);
-      alert('⚠️ No se pudo generar el archivo de Excel. Revisa la consola.');
+      alertaError('No se pudo generar el archivo de Excel. Revisa la consola.');
     }
   };
 
@@ -590,8 +627,8 @@ export default function App() {
       if (res.ok && data.token) {
         setToken(data.token); localStorage.setItem('token', data.token);
         setEmail(''); setPassword(''); setSubSeccionAdmin('reportes');
-      } else { alert("❌ Credenciales incorrectas"); }
-    } catch (error) { alert("Error de servidor"); }
+      } else { alertaError("Credenciales incorrectas"); }
+    } catch (error) { alertaError("Error de servidor"); }
   };
 
   const cerrarSesion = () => { setToken(''); localStorage.removeItem('token'); setSubSeccionAdmin('ver-inventario'); };
@@ -604,8 +641,8 @@ export default function App() {
         <div className="h-screen flex items-center justify-center">
           <div className="bg-white p-8 rounded-xl shadow-md border max-w-md w-full mx-4">
             <div className="text-center mb-6">
-              <span className="brand-mark text-lg font-bold text-orange-600 tracking-tight">🛠️ FerreSistema Pro</span>
-              <h2 className="text-xl font-bold mt-3">🔐 Acceso Administrativo</h2>
+              <span className="brand-mark text-lg font-bold text-orange-600 tracking-tight">FerreSistema Pro</span>
+              <h2 className="text-xl font-bold mt-3">Acceso Administrativo</h2>
               <p className="text-xs text-gray-400 mt-1">Ingresa tus credenciales para gestionar tu inventario.</p>
             </div>
             <form onSubmit={manejarLogin} className="space-y-4">
@@ -626,22 +663,22 @@ export default function App() {
           {/* Sidebar */}
           <div className="w-64 bg-slate-900 text-white flex flex-col h-screen shrink-0">
             <div className="px-5 py-5 border-b border-slate-700">
-              <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">🛠️ FerreSistema Pro</span>
+              <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">FerreSistema Pro</span>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-1">Control de Inventario</p>
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              <button onClick={() => { setSubSeccionAdmin('reportes'); limpiarFormulario(); }} className={`w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'reportes' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>📊 Reportes</button>
-              <button onClick={() => { setSubSeccionAdmin('ver-inventario'); limpiarFormulario(); }} className={`w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'ver-inventario' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>📋 Inventario</button>
+              <button onClick={() => { setSubSeccionAdmin('reportes'); limpiarFormulario(); }} className={`w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'reportes' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Reportes</button>
+              <button onClick={() => { setSubSeccionAdmin('ver-inventario'); limpiarFormulario(); }} className={`w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'ver-inventario' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Inventario</button>
 
               <p className="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Productos y Catálogos</p>
-              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('producto'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'producto' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>📦 Nuevo Producto</button>
-              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('venta'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'venta' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>💵 Registrar Venta</button>
-              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('compra'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'compra' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>🧾 Registrar Compra</button>
+              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('producto'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'producto' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Nuevo Producto</button>
+              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('venta'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'venta' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Registrar Venta</button>
+              <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('compra'); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'compra' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Registrar Compra</button>
             </div>
 
             <div className="p-3 border-t border-slate-700">
-              <button onClick={cerrarSesion} className="w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold text-red-400 hover:text-red-300 hover:bg-slate-800 transition">🔒 Cerrar Sesión</button>
+              <button onClick={cerrarSesion} className="w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold text-red-400 hover:text-red-300 hover:bg-slate-800 transition">Cerrar Sesión</button>
             </div>
           </div>
 
@@ -654,31 +691,31 @@ export default function App() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">📊 Panel de Reportes</h2>
+                    <h2 className="text-lg font-bold text-gray-900">Panel de Reportes</h2>
                     <p className="text-xs text-gray-400 mt-0.5">Resumen general del negocio, actualizado en tiempo real.</p>
                   </div>
                   <button onClick={exportarReportesExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition shrink-0">
-                    📥 Exportar Reporte Completo
+                    Exportar Reporte Completo
                   </button>
                 </div>
 
                 {/* Tarjetas KPI principales */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-5 rounded-2xl shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-wider opacity-80">📦 Valor del Inventario</p>
+                    <p className="text-xs font-bold uppercase tracking-wider opacity-80">Valor del Inventario</p>
                     <p className="text-2xl font-black mt-2">Q{reportes.valorInventario.toFixed(2)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">🗃️ Productos Registrados</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Productos Registrados</p>
                     <p className="text-2xl font-black mt-2">{reportes.totalProductos}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">⚠️ Stock Bajo</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Stock Bajo</p>
                     <p className="text-2xl font-black text-orange-600 mt-2">{reportes.stockBajoCantidad}</p>
                     <p className="text-xs text-gray-400 mt-1">Menos de 20 unidades</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">🚨 Agotados</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Agotados</p>
                     <p className="text-2xl font-black text-red-500 mt-2">{reportes.agotados}</p>
                     <p className="text-xs text-gray-400 mt-1">Sin unidades disponibles</p>
                   </div>
@@ -687,11 +724,11 @@ export default function App() {
                 {/* Ganancia y pendientes de cobro */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">💵 Ganancia Hoy</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Ganancia Hoy</p>
                     <p className="text-2xl font-black text-green-600 mt-2">Q{reportes.gananciaHoy.toFixed(2)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">📅 Ganancia del Mes</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Ganancia del Mes</p>
                     <p className="text-2xl font-black text-green-600 mt-2">Q{reportes.gananciaMes.toFixed(2)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
@@ -700,7 +737,7 @@ export default function App() {
                     <p className="text-xs text-gray-400 mt-1">{reportes.pendienteCantidad} venta{reportes.pendienteCantidad != 1 ? 's' : ''} a crédito sin cobrar</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">🚚 Compras del Mes</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Compras del Mes</p>
                     <p className="text-2xl font-black text-blue-600 mt-2">Q{reportes.comprasMes.toFixed(2)}</p>
                     <p className="text-xs text-gray-400 mt-1">Invertido en reabastecimiento</p>
                   </div>
@@ -709,7 +746,7 @@ export default function App() {
                 {/* Tablas de Detalles */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white p-5 rounded-xl border shadow-sm">
-                    <h3 className="font-bold text-gray-900 mb-4">💎 Top 5 con Mayor Valor en Inventario</h3>
+                    <h3 className="font-bold text-gray-900 mb-4">Top 5 con Mayor Valor en Inventario</h3>
                     <div className="divide-y text-sm">
                       {reportes.topValorInventario.length === 0 ? <p className="text-gray-400 py-2">Aún no hay productos registrados.</p> : reportes.topValorInventario.map((prod) => (
                         <div key={prod.id} className="py-2.5 flex justify-between items-center">
@@ -724,9 +761,9 @@ export default function App() {
                   </div>
 
                   <div className="bg-white p-5 rounded-xl border shadow-sm">
-                    <h3 className="font-bold text-red-500 mb-4">⚠️ Requiere Reabastecimiento</h3>
+                    <h3 className="font-bold text-red-500 mb-4">Requiere Reabastecimiento</h3>
                     <div className="divide-y text-sm max-h-60 overflow-y-auto">
-                      {reportes.bajoStock.length === 0 ? <p className="text-green-600 py-2">✅ Buen stock general.</p> : reportes.bajoStock.map((prod) => (
+                      {reportes.bajoStock.length === 0 ? <p className="text-green-600 py-2">Buen stock general.</p> : reportes.bajoStock.map((prod) => (
                         <div key={prod.id} className="py-2.5 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-gray-800">{prod.nombre}</p>
@@ -742,7 +779,7 @@ export default function App() {
                 {/* Valor de inventario por categoría */}
                 {reportes.valorPorCategoria.length > 0 && (
                   <div className="bg-white p-5 rounded-xl border shadow-sm">
-                    <h3 className="font-bold text-gray-900 mb-1">🗂️ Valor de Inventario por Categoría</h3>
+                    <h3 className="font-bold text-gray-900 mb-1">Valor de Inventario por Categoría</h3>
                     <p className="text-xs text-gray-400 mb-4">En qué categorías tienes más capital invertido en mercadería.</p>
                     <div className="space-y-3">
                       {(() => {
@@ -767,7 +804,7 @@ export default function App() {
               <div className="bg-white p-5 rounded-xl border shadow-sm">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
                   <div>
-                    <h3 className="font-bold text-gray-900">📈 Comparativa de Periodo</h3>
+                    <h3 className="font-bold text-gray-900">Comparativa de Periodo</h3>
                     <p className="text-xs text-gray-400 mt-0.5">El periodo actual contra el inmediato anterior.</p>
                   </div>
                   <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 w-fit">
@@ -780,9 +817,9 @@ export default function App() {
                   {(() => {
                     const datos = reportes.comparativas[periodoComparativa];
                     const metricas = [
-                      { key: 'ventas', label: '💵 Ventas', color: 'text-blue-600' },
-                      { key: 'compras', label: '📥 Compras', color: 'text-orange-600' },
-                      { key: 'ganancia', label: '📈 Ganancia', color: 'text-green-600' }
+                      { key: 'ventas', label: 'Ventas', color: 'text-blue-600' },
+                      { key: 'compras', label: 'Compras', color: 'text-orange-600' },
+                      { key: 'ganancia', label: 'Ganancia', color: 'text-green-600' }
                     ];
                     return metricas.map(m => {
                       const actual = datos[m.key].actual;
@@ -805,7 +842,7 @@ export default function App() {
 
               {/* Gráfica: Ventas vs Compras por mes */}
               <div className="bg-white p-5 rounded-xl border shadow-sm">
-                <h3 className="font-bold text-gray-900 mb-1">📊 Ventas vs Compras — Últimos 12 Meses</h3>
+                <h3 className="font-bold text-gray-900 mb-1">Ventas vs Compras — Últimos 12 Meses</h3>
                 <p className="text-xs text-gray-400 mb-4">Compara cuánto vendiste contra cuánto invertiste en reabastecimiento cada mes.</p>
                 {reportes.serieMensual.length === 0 ? (
                   <p className="text-gray-400 text-sm">Aún no hay suficientes datos para graficar.</p>
@@ -842,7 +879,7 @@ export default function App() {
               {/* Historial de Ventas */}
               <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                 <div className="p-5 border-b">
-                  <h3 className="font-bold text-gray-900">🧾 Historial de Ventas</h3>
+                  <h3 className="font-bold text-gray-900">Historial de Ventas</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Toca una fila para ver los productos. Las ventas a crédito se pueden marcar como cobradas.</p>
                 </div>
                 {reportes.historialVentas.length === 0 ? (
@@ -868,12 +905,12 @@ export default function App() {
                             <td className="p-4 text-gray-700">{new Date(venta.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                             <td className="p-4">
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${venta.tipo_venta === 'Crédito' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-700'}`}>
-                                {venta.tipo_venta === 'Crédito' ? '🧾 Crédito' : '💵 Contado'}
+                                {venta.tipo_venta === 'Crédito' ? 'Crédito' : 'Contado'}
                               </span>
                             </td>
                             <td className="p-4">
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${venta.estado === 'Pendiente' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                {venta.estado === 'Pendiente' ? '⏳ Pendiente' : '✅ Pagado'}
+                                {venta.estado === 'Pendiente' ? '⏳ Pendiente' : 'Pagado'}
                               </span>
                             </td>
                             <td className="p-4 text-gray-500">{venta.items} artículo{venta.items != 1 ? 's' : ''}</td>
@@ -913,7 +950,7 @@ export default function App() {
               {/* Historial de Compras */}
               <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                 <div className="p-5 border-b">
-                  <h3 className="font-bold text-gray-900">📦 Historial de Compras</h3>
+                  <h3 className="font-bold text-gray-900">Historial de Compras</h3>
                 </div>
                 {reportes.historialCompras.length === 0 ? (
                   <p className="text-gray-400 text-sm p-5">Aún no se ha registrado ninguna compra.</p>
@@ -979,7 +1016,7 @@ export default function App() {
                 {/* Panel de Registrar Venta */}
                 <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
                   <div>
-                    <h3 className="font-bold text-gray-800">💵 Registrar Venta</h3>
+                    <h3 className="font-bold text-gray-800">Registrar Venta</h3>
                     <p className="text-xs text-gray-400 mt-0.5">Añade los productos vendidos y elige si fue al contado o al crédito.</p>
                   </div>
 
@@ -1020,7 +1057,7 @@ export default function App() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="font-bold">Q{(l.cantidad * l.precio_unitario).toFixed(2)}</span>
-                            <button onClick={() => quitarLineaVenta(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
+                            <button onClick={() => quitarLineaVenta(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Quitar</button>
                           </div>
                         </div>
                       ))}
@@ -1030,8 +1067,8 @@ export default function App() {
                   <div>
                     <p className="text-xs font-bold text-gray-500 mb-2">Tipo de Venta</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => setTipoVentaNueva('Contado')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVentaNueva === 'Contado' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>💵 Contado</button>
-                      <button type="button" onClick={() => setTipoVentaNueva('Crédito')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>🧾 Crédito</button>
+                      <button type="button" onClick={() => setTipoVentaNueva('Contado')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVentaNueva === 'Contado' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Contado</button>
+                      <button type="button" onClick={() => setTipoVentaNueva('Crédito')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Crédito</button>
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1">
                       {tipoVentaNueva === 'Crédito' ? 'Quedará pendiente de cobro hasta que la marques como pagada.' : 'Se suma de inmediato a la ganancia del día.'}
@@ -1042,9 +1079,9 @@ export default function App() {
                     <span>Total:</span><span>Q{calcularTotalVenta()}</span>
                   </div>
                   <button onClick={registrarVenta} className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}>
-                    {tipoVentaNueva === 'Crédito' ? '🧾 Registrar Venta a Crédito' : '✅ Registrar Venta al Contado'}
+                    {tipoVentaNueva === 'Crédito' ? 'Registrar Venta a Crédito' : 'Registrar Venta al Contado'}
                   </button>
-                  <p className="text-[11px] text-gray-400 text-center">📊 El historial de ventas ahora vive en la sección Reportes.</p>
+                  <p className="text-[11px] text-gray-400 text-center">El historial de ventas ahora vive en la sección Reportes.</p>
                 </div>
 
                 </div>
@@ -1056,7 +1093,7 @@ export default function App() {
                 {/* Panel de Registrar Compra */}
                 <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
                   <div>
-                    <h3 className="font-bold text-gray-800">📥 Registrar Compra</h3>
+                    <h3 className="font-bold text-gray-800">Registrar Compra</h3>
                     <p className="text-xs text-gray-400 mt-0.5">Registra la mercadería comprada a tus proveedores; el stock se actualiza solo.</p>
                   </div>
 
@@ -1097,7 +1134,7 @@ export default function App() {
                       </div>
                     );
                   })()}
-                  <p className="text-[11px] text-gray-400">💡 El costo se sugiere igual al precio de venta actual; ajústalo al monto real que pagaste al proveedor.</p>
+                  <p className="text-[11px] text-gray-400">El costo se sugiere igual al precio de venta actual; ajústalo al monto real que pagaste al proveedor.</p>
 
                   {lineasCompra.length > 0 && (
                     <div className="divide-y border rounded-lg">
@@ -1109,7 +1146,7 @@ export default function App() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="font-bold">Q{(l.cantidad * l.costo_unitario).toFixed(2)}</span>
-                            <button onClick={() => quitarLineaCompra(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
+                            <button onClick={() => quitarLineaCompra(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Quitar</button>
                           </div>
                         </div>
                       ))}
@@ -1124,8 +1161,8 @@ export default function App() {
                   <div className="pt-3 border-t font-black text-lg flex justify-between">
                     <span>Total:</span><span>Q{calcularTotalCompra()}</span>
                   </div>
-                  <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">📥 Registrar Compra</button>
-                  <p className="text-[11px] text-gray-400 text-center">📊 El historial de compras ahora vive en la sección Reportes.</p>
+                  <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Registrar Compra</button>
+                  <p className="text-[11px] text-gray-400 text-center">El historial de compras ahora vive en la sección Reportes.</p>
                 </div>
 
                 </div>
@@ -1140,7 +1177,7 @@ export default function App() {
                   <div className="flex justify-between items-center mb-4 border-b pb-3">
                     <div>
                       <h3 className="font-bold text-gray-800">
-                        {modoEdicion ? '✏️ Actualizar Producto' : '📦 Registrar Nuevo Producto'}
+                        {modoEdicion ? 'Actualizar Producto' : 'Registrar Nuevo Producto'}
                       </h3>
                       <p className="text-xs text-gray-400 mt-0.5">Completa los datos del artículo tal como aparecerán en el inventario.</p>
                     </div>
@@ -1210,14 +1247,14 @@ export default function App() {
                           {nuevoProd.imagen ? (
                             <img src={nuevoProd.imagen} alt="Vista previa" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
                           ) : null}
-                          <span className="text-gray-300 text-xl" style={{ display: nuevoProd.imagen ? 'none' : 'flex' }}>📦</span>
+                          <span className="text-gray-300 text-xl" style={{ display: nuevoProd.imagen ? 'none' : 'flex' }}></span>
                         </div>
                       </div>
                       <p className="text-[11px] text-gray-400 mt-1">Pega el enlace de una imagen ya subida a internet (por ejemplo, de Google Imágenes).</p>
                     </div>
 
                     <button type="submit" className={`w-full text-white font-bold py-2.5 rounded-lg text-sm mt-2 transition ${modoEdicion ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
-                      {modoEdicion ? '💾 Guardar Cambios' : '💾 Añadir a Inventario'}
+                      {modoEdicion ? 'Guardar Cambios' : 'Añadir a Inventario'}
                     </button>
                   </form>
                 </div>
@@ -1225,7 +1262,7 @@ export default function App() {
                 {/* Formularios Rápidos Laterales */}
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded-xl border shadow-sm">
-                    <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">📁 Nueva Categoría</h4>
+                    <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">Nueva Categoría</h4>
                     <p className="text-[11px] text-gray-400 mb-2">Crea un grupo para organizar tus productos.</p>
                     <form onSubmit={manejarCrearCategoria} className="flex space-x-2">
                       <input type="text" placeholder="Ej: Electricidad" value={nuevaCatNombre} onChange={(e) => setNuevaCatNombre(e.target.value)} className="border p-1.5 rounded text-sm flex-1" />
@@ -1234,7 +1271,7 @@ export default function App() {
                   </div>
 
                   <div className="bg-white p-4 rounded-xl border shadow-sm">
-                    <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">📏 Nueva Unidad de Medida</h4>
+                    <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">Nueva Unidad de Medida</h4>
                     <p className="text-[11px] text-gray-400 mb-2">Ej: si manejas por metro, saco o galón.</p>
                     <form onSubmit={manejarCrearUnidad} className="space-y-2">
                       <input type="text" placeholder="Nombre (Ej: Metro)" value={nuevaUniNombre} onChange={(e) => setNuevaUniNombre(e.target.value)} className="w-full border p-1.5 rounded text-sm" />
@@ -1282,7 +1319,7 @@ export default function App() {
                                 {p.url_imagen ? (
                                   <img src={p.url_imagen} alt={p.nombre} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
                                 ) : null}
-                                <span className="text-gray-300 text-base" style={{ display: p.url_imagen ? 'none' : 'flex' }}>📦</span>
+                                <span className="text-gray-300 text-base" style={{ display: p.url_imagen ? 'none' : 'flex' }}></span>
                               </div>
                               <span>{p.nombre}</span>
                             </div>
@@ -1291,8 +1328,8 @@ export default function App() {
                           <td className="p-4 font-bold">Q{parseFloat(p.precio).toFixed(2)}</td>
                           <td className="p-4"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.cantidad_stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{parseFloat(p.cantidad_stock)} uds</span></td>
                           <td className="p-4 text-center space-x-2">
-                            <button onClick={() => iniciarEdicion(p)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded transition">✏️ Editar</button>
-                            <button onClick={() => manejarEliminarProducto(p.id)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded transition">🗑️ Eliminar</button>
+                            <button onClick={() => iniciarEdicion(p)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded transition">Editar</button>
+                            <button onClick={() => manejarEliminarProducto(p.id)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded transition">Eliminar</button>
                           </td>
                         </tr>
                       ))}
