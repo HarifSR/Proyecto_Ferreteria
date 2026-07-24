@@ -76,6 +76,9 @@ export default function App() {
   const [cantidadVentaSel, setCantidadVentaSel] = useState('1');
   const [lineasVenta, setLineasVenta] = useState([]);
   const [tipoVentaNueva, setTipoVentaNueva] = useState('Contado');
+  const [nombreClienteVenta, setNombreClienteVenta] = useState('');
+  const [direccionClienteVenta, setDireccionClienteVenta] = useState('');
+  const [nitClienteVenta, setNitClienteVenta] = useState('');
   const [ventaExpandida, setVentaExpandida] = useState(null);
   const [periodoComparativa, setPeriodoComparativa] = useState('mes'); // 'semana' | 'mes' | 'anio'
   const [detalleVenta, setDetalleVenta] = useState({});
@@ -182,17 +185,30 @@ export default function App() {
 
   const registrarVenta = async () => {
     if (lineasVenta.length === 0) { alertaAdvertencia("Agrega al menos un producto a la venta."); return; }
+    if (tipoVentaNueva === 'Crédito' && !nombreClienteVenta.trim()) {
+      alertaAdvertencia("Para una venta a crédito necesitas identificar al comprador (nombre).");
+      return;
+    }
     try {
       const res = await fetch('http://localhost:5000/api/ventas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ items: lineasVenta, tipoVenta: tipoVentaNueva })
+        body: JSON.stringify({
+          items: lineasVenta,
+          tipoVenta: tipoVentaNueva,
+          cliente: nombreClienteVenta.trim() || null,
+          clienteDireccion: direccionClienteVenta.trim() || null,
+          clienteNit: nitClienteVenta.trim() || null
+        })
       });
       const data = await res.json();
       if (res.ok) {
         alertaExito(data.mensaje);
         setLineasVenta([]);
         setTipoVentaNueva('Contado');
+        setNombreClienteVenta('');
+        setDireccionClienteVenta('');
+        setNitClienteVenta('');
         cargarInventario();
         cargarReportesDashboard();
       } else {
@@ -218,7 +234,7 @@ export default function App() {
     if (!detalleVenta[id]) {
       try {
         const res = await fetch(`http://localhost:5000/api/ventas/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) { const data = await res.json(); setDetalleVenta(prev => ({ ...prev, [id]: data.items })); }
+        if (res.ok) { const data = await res.json(); setDetalleVenta(prev => ({ ...prev, [id]: { venta: data.venta, items: data.items } })); }
       } catch (error) {}
     }
   };
@@ -743,12 +759,12 @@ export default function App() {
 
     // ============ HOJA 7: HISTORIAL DE VENTAS ============
     const hVentas = wb.addWorksheet('Historial Ventas');
-    hVentas.columns = [{ width: 10 }, { width: 20 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 14 }];
+    hVentas.columns = [{ width: 10 }, { width: 20 }, { width: 12 }, { width: 14 }, { width: 22 }, { width: 14 }, { width: 12 }, { width: 14 }];
     tituloHoja(hVentas, 'Historial de Ventas Recientes');
-    const filaEncVentas = hVentas.addRow(['Venta #', 'Fecha', 'Tipo', 'Estado', 'Artículos', 'Total']);
+    const filaEncVentas = hVentas.addRow(['Venta #', 'Fecha', 'Tipo', 'Estado', 'Cliente', 'NIT', 'Artículos', 'Total']);
     estiloEncabezado(filaEncVentas, NAVY);
     if (!reportes.historialVentas || reportes.historialVentas.length === 0) {
-      hVentas.addRow(['—', 'Aún no se ha registrado ninguna venta.', '', '', '', '']);
+      hVentas.addRow(['—', 'Aún no se ha registrado ninguna venta.', '', '', '', '', '', '']);
     } else {
       reportes.historialVentas.forEach(v => {
         const fila = hVentas.addRow([
@@ -756,16 +772,18 @@ export default function App() {
           new Date(v.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }),
           v.tipo_venta,
           v.estado,
+          v.cliente || '—',
+          v.cliente_nit || '—',
           v.items,
           parseFloat(v.total)
         ]);
-        fila.getCell(6).numFmt = MONEDA;
-        fila.getCell(6).font = { bold: true };
+        fila.getCell(8).numFmt = MONEDA;
+        fila.getCell(8).font = { bold: true };
         fila.getCell(4).font = { bold: true, color: { argb: v.estado === 'Pendiente' ? RED : GREEN } };
         fila.getCell(3).font = { bold: true, color: { argb: v.tipo_venta === 'Crédito' ? AMBER : STEEL } };
       });
     }
-    finalizarHoja(hVentas, 6);
+    finalizarHoja(hVentas, 8);
 
     // ============ HOJA 8: HISTORIAL DE COMPRAS ============
     const hCompras = wb.addWorksheet('Historial Compras');
@@ -1149,6 +1167,7 @@ export default function App() {
                         <th className="p-4">Fecha</th>
                         <th className="p-4">Tipo</th>
                         <th className="p-4">Estado</th>
+                        <th className="p-4">Cliente</th>
                         <th className="p-4">Artículos</th>
                         <th className="p-4">Total</th>
                         <th className="p-4"></th>
@@ -1167,9 +1186,10 @@ export default function App() {
                             </td>
                             <td className="p-4">
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${venta.estado === 'Pendiente' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                {venta.estado === 'Pendiente' ? '⏳ Pendiente' : 'Pagado'}
+                                {venta.estado === 'Pendiente' ? 'Pendiente' : 'Pagado'}
                               </span>
                             </td>
+                            <td className="p-4 text-gray-700">{venta.cliente || '—'}</td>
                             <td className="p-4 text-gray-500">{venta.items} artículo{venta.items != 1 ? 's' : ''}</td>
                             <td className="p-4 font-bold">Q{parseFloat(venta.total).toFixed(2)}</td>
                             <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
@@ -1180,19 +1200,29 @@ export default function App() {
                           </tr>
                           {ventaExpandida === venta.id && (
                             <tr>
-                              <td colSpan={7} className="p-4 bg-gray-50">
+                              <td colSpan={8} className="p-4 bg-gray-50">
                                 {!detalleVenta[venta.id] ? <p className="text-xs text-gray-400">Cargando detalle...</p> : (
-                                  <div className="divide-y">
-                                    {detalleVenta[venta.id].map((item, i) => (
-                                      <div key={i} className="py-2 flex justify-between text-sm">
-                                        <div>
-                                          <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
-                                          <p className="text-xs text-gray-400">{item.cantidad} × Q{parseFloat(item.precio_unitario).toFixed(2)}</p>
-                                        </div>
-                                        <span className="font-bold text-gray-800">Q{parseFloat(item.subtotal).toFixed(2)}</span>
+                                  <>
+                                    {(detalleVenta[venta.id].venta?.cliente || detalleVenta[venta.id].venta?.cliente_direccion || detalleVenta[venta.id].venta?.cliente_nit) && (
+                                      <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm">
+                                        <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">Datos del Comprador</p>
+                                        {detalleVenta[venta.id].venta?.cliente && <p><span className="text-gray-500">Nombre:</span> <span className="font-semibold">{detalleVenta[venta.id].venta.cliente}</span></p>}
+                                        {detalleVenta[venta.id].venta?.cliente_direccion && <p><span className="text-gray-500">Dirección:</span> <span className="font-semibold">{detalleVenta[venta.id].venta.cliente_direccion}</span></p>}
+                                        {detalleVenta[venta.id].venta?.cliente_nit && <p><span className="text-gray-500">NIT:</span> <span className="font-semibold">{detalleVenta[venta.id].venta.cliente_nit}</span></p>}
                                       </div>
-                                    ))}
-                                  </div>
+                                    )}
+                                    <div className="divide-y">
+                                      {detalleVenta[venta.id].items.map((item, i) => (
+                                        <div key={i} className="py-2 flex justify-between text-sm">
+                                          <div>
+                                            <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
+                                            <p className="text-xs text-gray-400">{item.cantidad} × Q{parseFloat(item.precio_unitario).toFixed(2)}</p>
+                                          </div>
+                                          <span className="font-bold text-gray-800">Q{parseFloat(item.subtotal).toFixed(2)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </>
                                 )}
                               </td>
                             </tr>
@@ -1330,6 +1360,18 @@ export default function App() {
                     <p className="text-[11px] text-gray-400 mt-1">
                       {tipoVentaNueva === 'Crédito' ? 'Quedará pendiente de cobro hasta que la marques como pagada.' : 'Se suma de inmediato a la ganancia del día.'}
                     </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 mb-2">
+                      Datos del Comprador {tipoVentaNueva === 'Crédito' ? <span className="text-red-500">(obligatorio)</span> : <span className="text-gray-400 font-normal">(opcional)</span>}
+                    </p>
+                    <div className="space-y-2">
+                      <input type="text" placeholder="Nombre" value={nombreClienteVenta} onChange={(e) => setNombreClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                      <input type="text" placeholder="Dirección" value={direccionClienteVenta} onChange={(e) => setDireccionClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                      <input type="text" placeholder="NIT" value={nitClienteVenta} onChange={(e) => setNitClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                    </div>
+                    {tipoVentaNueva === 'Crédito' && <p className="text-[11px] text-gray-400 mt-1">Necesitamos identificar al comprador cuando se fía la mercadería.</p>}
                   </div>
 
                   <div className="pt-3 border-t font-black text-lg flex justify-between">
