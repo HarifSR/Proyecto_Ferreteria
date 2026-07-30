@@ -39,6 +39,9 @@ const confirmarAccion = async (titulo, texto, textoConfirmar = 'Sí, continuar')
   return resultado.isConfirmed;
 };
 
+// Formatea un monto en Quetzales con separador de miles (Q1,234.56) para que se lea sin confusiones
+const formatQ = (valor) => (Number(valor) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function App() {
   // --------------------------------------------------------
   // ESTADO: Inventario y Catálogos (Productos, Categorías, Unidades)
@@ -202,7 +205,7 @@ export default function App() {
   };
 
   const quitarLineaVenta = (producto_id) => setLineasVenta(lineasVenta.filter(l => l.producto_id !== producto_id));
-  const calcularTotalVenta = () => lineasVenta.reduce((acc, l) => acc + (l.precio_unitario * l.cantidad), 0).toFixed(2);
+  const calcularTotalVenta = () => lineasVenta.reduce((acc, l) => acc + (l.precio_unitario * l.cantidad), 0);
 
   const registrarVenta = async () => {
     if (lineasVenta.length === 0) { alertaAdvertencia("Agrega al menos un producto a la venta."); return; }
@@ -283,7 +286,7 @@ export default function App() {
   };
 
   const quitarLineaCompra = (producto_id) => setLineasCompra(lineasCompra.filter(l => l.producto_id !== producto_id));
-  const calcularTotalCompra = () => lineasCompra.reduce((acc, l) => acc + (l.costo_unitario * l.cantidad), 0).toFixed(2);
+  const calcularTotalCompra = () => lineasCompra.reduce((acc, l) => acc + (l.costo_unitario * l.cantidad), 0);
 
   const registrarCompra = async () => {
     if (lineasCompra.length === 0) { alertaAdvertencia("Agrega al menos un producto a la compra."); return; }
@@ -596,9 +599,9 @@ export default function App() {
         hPortada.getCell(`${celdaIni}${r}`).border = bordeCelda;
       }
     };
-    tarjetaKPI('B', 'VALOR DEL INVENTARIO', `Q${reportes.valorInventario.toFixed(2)}`, GREEN);
-    tarjetaKPI('C', 'GANANCIA DEL MES', `Q${reportes.gananciaMes.toFixed(2)}`, STEEL);
-    tarjetaKPI('D', 'PENDIENTE DE COBRO', `Q${reportes.pendienteTotal.toFixed(2)}`, AMBER);
+    tarjetaKPI('B', 'VALOR DEL INVENTARIO', `Q${formatQ(reportes.valorInventario)}`, GREEN);
+    tarjetaKPI('C', 'GANANCIA DEL MES', `Q${formatQ(reportes.gananciaMes)}`, STEEL);
+    tarjetaKPI('D', 'PENDIENTE DE COBRO', `Q${formatQ(reportes.pendienteTotal)}`, AMBER);
 
     hPortada.mergeCells('B10:D10');
     hPortada.getCell('B10').value = 'Este archivo contiene una hoja por cada sección: Comparativas, Inventario, Ventas, Compras y más productos vendidos/menos vendidos. Usa las pestañas de abajo para navegar.';
@@ -990,7 +993,7 @@ export default function App() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-5 rounded-2xl shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wider opacity-80">Valor del Inventario</p>
-                    <p className="text-2xl font-black mt-2">Q{reportes.valorInventario.toFixed(2)}</p>
+                    <p className="text-2xl font-black mt-2">Q{formatQ(reportes.valorInventario)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Productos Registrados</p>
@@ -1012,20 +1015,20 @@ export default function App() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Ganancia Hoy</p>
-                    <p className="text-2xl font-black text-green-600 mt-2">Q{reportes.gananciaHoy.toFixed(2)}</p>
+                    <p className="text-2xl font-black text-green-600 mt-2">Q{formatQ(reportes.gananciaHoy)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Ganancia del Mes</p>
-                    <p className="text-2xl font-black text-green-600 mt-2">Q{reportes.gananciaMes.toFixed(2)}</p>
+                    <p className="text-2xl font-black text-green-600 mt-2">Q{formatQ(reportes.gananciaMes)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">⏳ Pendiente de Cobro</p>
-                    <p className="text-2xl font-black text-orange-600 mt-2">Q{reportes.pendienteTotal.toFixed(2)}</p>
+                    <p className="text-2xl font-black text-orange-600 mt-2">Q{formatQ(reportes.pendienteTotal)}</p>
                     <p className="text-xs text-gray-400 mt-1">{reportes.pendienteCantidad} venta{reportes.pendienteCantidad != 1 ? 's' : ''} a crédito sin cobrar</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Compras del Mes</p>
-                    <p className="text-2xl font-black text-blue-600 mt-2">Q{reportes.comprasMes.toFixed(2)}</p>
+                    <p className="text-2xl font-black text-blue-600 mt-2">Q{formatQ(reportes.comprasMes)}</p>
                     <p className="text-xs text-gray-400 mt-1">Invertido en reabastecimiento</p>
                   </div>
                 </div>
@@ -1039,9 +1042,9 @@ export default function App() {
                         <div key={prod.id} className="py-2.5 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-gray-800">{prod.nombre}</p>
-                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}{parseFloat(prod.cantidad_stock)} uds × Q{parseFloat(prod.precio).toFixed(2)}</p>
+                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}{parseFloat(prod.cantidad_stock)} uds × Q{formatQ(parseFloat(prod.precio))}</p>
                           </div>
-                          <span className="bg-orange-100 text-orange-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">Q{parseFloat(prod.valor_total).toFixed(2)}</span>
+                          <span className="bg-orange-100 text-orange-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">Q{formatQ(parseFloat(prod.valor_total))}</span>
                         </div>
                       ))}
                     </div>
@@ -1073,7 +1076,7 @@ export default function App() {
                         <div key={prod.id} className="py-2.5 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-gray-800">{idx + 1}. {prod.nombre}</p>
-                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}Ingresos: Q{prod.ingresos.toFixed(2)}</p>
+                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}Ingresos: Q{formatQ(prod.ingresos)}</p>
                           </div>
                           <span className="bg-green-100 text-green-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">{prod.cantidadVendida} uds</span>
                         </div>
@@ -1089,7 +1092,7 @@ export default function App() {
                         <div key={prod.id} className="py-2.5 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-gray-800">{idx + 1}. {prod.nombre}</p>
-                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}Ingresos: Q{prod.ingresos.toFixed(2)}</p>
+                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}Ingresos: Q{formatQ(prod.ingresos)}</p>
                           </div>
                           <span className="bg-red-100 text-red-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">{prod.cantidadVendida} uds</span>
                         </div>
@@ -1110,7 +1113,7 @@ export default function App() {
                           <div key={idx}>
                             <div className="flex justify-between text-sm mb-1">
                               <span className="font-semibold text-gray-700">{cat.categoria} <span className="text-gray-400 font-normal">({cat.cantidad_productos} productos)</span></span>
-                              <span className="font-bold text-gray-800">Q{parseFloat(cat.valor).toFixed(2)}</span>
+                              <span className="font-bold text-gray-800">Q{formatQ(parseFloat(cat.valor))}</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
                               <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${maxValor > 0 ? (parseFloat(cat.valor) / maxValor) * 100 : 0}%` }}></div>
@@ -1151,9 +1154,9 @@ export default function App() {
                       return (
                         <div key={m.key} className="p-4 rounded-xl bg-gray-50 border">
                           <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{m.label}</p>
-                          <p className={`text-xl font-black mt-1 ${m.color}`}>Q{actual.toFixed(2)}</p>
+                          <p className={`text-xl font-black mt-1 ${m.color}`}>Q{formatQ(actual)}</p>
                           <p className={`text-xs font-bold mt-1 ${subio ? 'text-green-600' : 'text-red-500'}`}>
-                            {subio ? '▲' : '▼'} {Math.abs(cambio).toFixed(0)}% <span className="text-gray-400 font-normal">vs anterior (Q{anterior.toFixed(2)})</span>
+                            {subio ? '▲' : '▼'} {Math.abs(cambio).toFixed(0)}% <span className="text-gray-400 font-normal">vs anterior (Q{formatQ(anterior)})</span>
                           </p>
                         </div>
                       );
@@ -1238,7 +1241,7 @@ export default function App() {
                             </td>
                             <td className="p-4 text-gray-700">{venta.cliente || '—'}</td>
                             <td className="p-4 text-gray-500">{venta.items} artículo{venta.items != 1 ? 's' : ''}</td>
-                            <td className="p-4 font-bold">Q{parseFloat(venta.total).toFixed(2)}</td>
+                            <td className="p-4 font-bold">Q{formatQ(parseFloat(venta.total))}</td>
                             <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                               {venta.estado === 'Pendiente' && (
                                 <button onClick={() => marcarVentaPagada(venta.id)} className="bg-green-100 text-green-700 hover:bg-green-200 text-xs font-bold px-2.5 py-1 rounded transition">Marcar Cobrada</button>
@@ -1263,9 +1266,9 @@ export default function App() {
                                         <div key={i} className="py-2 flex justify-between text-sm">
                                           <div>
                                             <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
-                                            <p className="text-xs text-gray-400">{item.cantidad} × Q{parseFloat(item.precio_unitario).toFixed(2)}</p>
+                                            <p className="text-xs text-gray-400">{item.cantidad} × Q{formatQ(parseFloat(item.precio_unitario))}</p>
                                           </div>
-                                          <span className="font-bold text-gray-800">Q{parseFloat(item.subtotal).toFixed(2)}</span>
+                                          <span className="font-bold text-gray-800">Q{formatQ(parseFloat(item.subtotal))}</span>
                                         </div>
                                       ))}
                                     </div>
@@ -1308,7 +1311,7 @@ export default function App() {
                             <td className="p-4 text-gray-700">{new Date(compra.fecha).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                             <td className="p-4 text-gray-500">{compra.proveedor || '—'}</td>
                             <td className="p-4 text-gray-500">{compra.items} artículo{compra.items != 1 ? 's' : ''}</td>
-                            <td className="p-4 font-bold">Q{parseFloat(compra.total).toFixed(2)}</td>
+                            <td className="p-4 font-bold">Q{formatQ(parseFloat(compra.total))}</td>
                             <td className="p-4 text-right text-gray-400">{compraExpandida === compra.id ? '▲' : '▼'}</td>
                           </tr>
                           {compraExpandida === compra.id && (
@@ -1320,9 +1323,9 @@ export default function App() {
                                       <div key={i} className="py-2 flex justify-between text-sm">
                                         <div>
                                           <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
-                                          <p className="text-xs text-gray-400">{item.cantidad} × Q{parseFloat(item.costo_unitario).toFixed(2)}</p>
+                                          <p className="text-xs text-gray-400">{item.cantidad} × Q{formatQ(parseFloat(item.costo_unitario))}</p>
                                         </div>
-                                        <span className="font-bold text-gray-800">Q{parseFloat(item.subtotal).toFixed(2)}</span>
+                                        <span className="font-bold text-gray-800">Q{formatQ(parseFloat(item.subtotal))}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -1358,7 +1361,7 @@ export default function App() {
                     <label className="text-xs font-bold text-gray-500">Producto</label>
                     <select value={productoVentaSel} onChange={(e) => setProductoVentaSel(e.target.value)} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
                       <option value="">Seleccionar producto</option>
-                      {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (Q{parseFloat(p.precio).toFixed(2)} · {parseFloat(p.cantidad_stock)} uds)</option>)}
+                      {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (Q{formatQ(parseFloat(p.precio))} · {parseFloat(p.cantidad_stock)} uds)</option>)}
                     </select>
                   </div>
 
@@ -1376,7 +1379,7 @@ export default function App() {
                     return (
                       <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
                         <span className="font-semibold text-gray-800">{p.nombre}</span>
-                        <span className="text-blue-700 font-bold">Q{parseFloat(p.precio).toFixed(2)} <span className="text-gray-400 font-normal">· {parseFloat(p.cantidad_stock)} disponibles</span></span>
+                        <span className="text-blue-700 font-bold">Q{formatQ(parseFloat(p.precio))} <span className="text-gray-400 font-normal">· {parseFloat(p.cantidad_stock)} disponibles</span></span>
                       </div>
                     );
                   })()}
@@ -1387,10 +1390,10 @@ export default function App() {
                         <div key={l.producto_id} className="p-2.5 flex justify-between items-center text-sm">
                           <div>
                             <p className="font-semibold">{l.nombre}</p>
-                            <p className="text-xs text-gray-400">{l.cantidad} × Q{l.precio_unitario.toFixed(2)}</p>
+                            <p className="text-xs text-gray-400">{l.cantidad} × Q{formatQ(l.precio_unitario)}</p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className="font-bold">Q{(l.cantidad * l.precio_unitario).toFixed(2)}</span>
+                            <span className="font-bold">Q{formatQ((l.cantidad * l.precio_unitario))}</span>
                             <button onClick={() => quitarLineaVenta(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Quitar</button>
                           </div>
                         </div>
@@ -1422,7 +1425,7 @@ export default function App() {
                   </div>
 
                   <div className="pt-3 border-t font-black text-lg flex justify-between">
-                    <span>Total:</span><span>Q{calcularTotalVenta()}</span>
+                    <span>Total:</span><span>Q{formatQ(calcularTotalVenta())}</span>
                   </div>
                   <button onClick={registrarVenta} className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}>
                     {tipoVentaNueva === 'Crédito' ? 'Registrar Venta a Crédito' : 'Registrar Venta al Contado'}
@@ -1476,7 +1479,7 @@ export default function App() {
                     return (
                       <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
                         <span className="font-semibold text-gray-800">{p.nombre}</span>
-                        <span className="text-gray-400">Stock actual: <span className="text-blue-700 font-bold">{parseFloat(p.cantidad_stock)}</span> uds · Precio de venta: Q{parseFloat(p.precio).toFixed(2)}</span>
+                        <span className="text-gray-400">Stock actual: <span className="text-blue-700 font-bold">{parseFloat(p.cantidad_stock)}</span> uds · Precio de venta: Q{formatQ(parseFloat(p.precio))}</span>
                       </div>
                     );
                   })()}
@@ -1488,10 +1491,10 @@ export default function App() {
                         <div key={l.producto_id} className="p-2.5 flex justify-between items-center text-sm">
                           <div>
                             <p className="font-semibold">{l.nombre}</p>
-                            <p className="text-xs text-gray-400">{l.cantidad} × Q{l.costo_unitario.toFixed(2)}</p>
+                            <p className="text-xs text-gray-400">{l.cantidad} × Q{formatQ(l.costo_unitario)}</p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className="font-bold">Q{(l.cantidad * l.costo_unitario).toFixed(2)}</span>
+                            <span className="font-bold">Q{formatQ((l.cantidad * l.costo_unitario))}</span>
                             <button onClick={() => quitarLineaCompra(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Quitar</button>
                           </div>
                         </div>
@@ -1505,7 +1508,7 @@ export default function App() {
                   </div>
 
                   <div className="pt-3 border-t font-black text-lg flex justify-between">
-                    <span>Total:</span><span>Q{calcularTotalCompra()}</span>
+                    <span>Total:</span><span>Q{formatQ(calcularTotalCompra())}</span>
                   </div>
                   <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Registrar Compra</button>
                   <p className="text-[11px] text-gray-400 text-center">El historial de compras ahora vive en la sección Reportes.</p>
@@ -1671,7 +1674,7 @@ export default function App() {
                             </div>
                           </td>
                           <td className="p-4 text-gray-500">{p.marca || '—'}</td>
-                          <td className="p-4 font-bold">Q{parseFloat(p.precio).toFixed(2)}</td>
+                          <td className="p-4 font-bold">Q{formatQ(parseFloat(p.precio))}</td>
                           <td className="p-4"><span className={`px-2 py-0.5 rounded text-xs font-bold ${p.cantidad_stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{parseFloat(p.cantidad_stock)} uds</span></td>
                           <td className="p-4 text-center space-x-2">
                             <button onClick={() => iniciarEdicion(p)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded transition">Editar</button>
