@@ -40,10 +40,16 @@ const confirmarAccion = async (titulo, texto, textoConfirmar = 'Sí, continuar')
 };
 
 export default function App() {
+  // --------------------------------------------------------
+  // ESTADO: Inventario y Catálogos (Productos, Categorías, Unidades)
+  // --------------------------------------------------------
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [unidades, setUnidades] = useState([]);
 
+  // --------------------------------------------------------
+  // ESTADO: Sesión y Navegación
+  // --------------------------------------------------------
   const [subSeccionAdmin, setSubSeccionAdmin] = useState('reportes');
   const [token, setToken] = useState(localStorage.getItem('token') || '');
 
@@ -51,7 +57,9 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Reportes de Inventario
+  // --------------------------------------------------------
+  // ESTADO: Reportes de Inventario
+  // --------------------------------------------------------
   const [reportes, setReportes] = useState({
     totalProductos: 0, valorInventario: 0, agotados: 0, stockBajoCantidad: 0,
     bajoStock: [], valorPorCategoria: [], topValorInventario: [],
@@ -71,7 +79,9 @@ export default function App() {
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
   const [modoCatalogo, setModoCatalogo] = useState('producto'); // 'producto' | 'venta' | 'compra'
 
-  // Registro de Ventas
+  // --------------------------------------------------------
+  // ESTADO: Registro de Ventas
+  // --------------------------------------------------------
   const [productoVentaSel, setProductoVentaSel] = useState('');
   const [cantidadVentaSel, setCantidadVentaSel] = useState('1');
   const [lineasVenta, setLineasVenta] = useState([]);
@@ -83,7 +93,9 @@ export default function App() {
   const [periodoComparativa, setPeriodoComparativa] = useState('mes'); // 'semana' | 'mes' | 'anio'
   const [detalleVenta, setDetalleVenta] = useState({});
 
-  // Registro de Compras
+  // --------------------------------------------------------
+  // ESTADO: Registro de Compras
+  // --------------------------------------------------------
   const [productoCompraSel, setProductoCompraSel] = useState('');
   const [cantidadCompraSel, setCantidadCompraSel] = useState('1');
   const [costoCompraSel, setCostoCompraSel] = useState('');
@@ -92,13 +104,17 @@ export default function App() {
   const [compraExpandida, setCompraExpandida] = useState(null);
   const [detalleCompra, setDetalleCompra] = useState({});
 
-  // Formulario de Producto (Sirve para Crear y Editar)
+  // --------------------------------------------------------
+  // ESTADO: Formulario de Producto (Sirve para Crear y Editar)
+  // --------------------------------------------------------
   const [nuevoProd, setNuevoProd] = useState({
     id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '', imagen: ''
   });
   const [modoEdicion, setModoEdicion] = useState(false);
 
-  // Formularios rápidos
+  // --------------------------------------------------------
+  // ESTADO: Formularios Rápidos de Catálogo (Categoría / Unidad)
+  // --------------------------------------------------------
   const [nuevaCatNombre, setNuevaCatNombre] = useState('');
   const [nuevaUniNombre, setNuevaUniNombre] = useState('');
   const [nuevaUniCodigo, setNuevaUniCodigo] = useState('');
@@ -146,14 +162,19 @@ export default function App() {
     }
   };
 
+  // --------------------------------------------------------
+  // EFECTOS: carga inicial y recarga de reportes al cambiar de sección
+  // --------------------------------------------------------
   useEffect(() => {
     cargarInventario();
     cargarCategorias();
     cargarUnidades();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if ((subSeccionAdmin === 'reportes' || (subSeccionAdmin === 'nuevo-producto' && modoCatalogo !== 'producto')) && token) cargarReportesDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subSeccionAdmin, modoCatalogo, token]);
 
   // --------------------------------------------------------
@@ -235,7 +256,7 @@ export default function App() {
       try {
         const res = await fetch(`http://localhost:5000/api/ventas/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) { const data = await res.json(); setDetalleVenta(prev => ({ ...prev, [id]: { venta: data.venta, items: data.items } })); }
-      } catch (error) {}
+      } catch (error) { console.error('Error al cargar el detalle de la venta:', error); }
     }
   };
 
@@ -292,7 +313,7 @@ export default function App() {
       try {
         const res = await fetch(`http://localhost:5000/api/compras/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) { const data = await res.json(); setDetalleCompra(prev => ({ ...prev, [id]: data.items })); }
-      } catch (error) {}
+      } catch (error) { console.error('Error al cargar el detalle de la compra:', error); }
     }
   };
 
@@ -838,8 +859,17 @@ export default function App() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ nombre: nuevaCatNombre })
       });
-      if (res.ok) { setNuevaCatNombre(''); cargarCategorias(); }
-    } catch (error) {}
+      if (res.ok) {
+        setNuevaCatNombre('');
+        cargarCategorias();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alertaError(data.error || 'No se pudo crear la categoría.');
+      }
+    } catch (error) {
+      console.error('Error al crear categoría:', error);
+      alertaError('Error al conectar con el servidor.');
+    }
   };
 
   const manejarCrearUnidad = async (e) => {
@@ -851,10 +881,23 @@ export default function App() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ nombre: nuevaUniNombre, codigo: nuevaUniCodigo })
       });
-      if (res.ok) { setNuevaUniNombre(''); setNuevaUniCodigo(''); cargarUnidades(); }
-    } catch (error) {}
+      if (res.ok) {
+        setNuevaUniNombre('');
+        setNuevaUniCodigo('');
+        cargarUnidades();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alertaError(data.error || 'No se pudo crear la unidad de medida.');
+      }
+    } catch (error) {
+      console.error('Error al crear unidad:', error);
+      alertaError('Error al conectar con el servidor.');
+    }
   };
 
+  // --------------------------------------------------------
+  // AUTENTICACIÓN
+  // --------------------------------------------------------
   const manejarLogin = async (e) => {
     e.preventDefault();
     try {
@@ -875,9 +918,13 @@ export default function App() {
 
   const productosFiltradosAdmin = productos.filter(p => p.nombre.toLowerCase().includes(busquedaAdmin.toLowerCase()) || p.id.toLowerCase().includes(busquedaAdmin.toLowerCase()));
 
+  // ==========================================================
+  // RENDER (JSX)
+  // ==========================================================
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-gray-800">
       {!token ? (
+        /* Pantalla de Login */
         <div className="h-screen flex items-center justify-center">
           <div className="bg-white p-8 rounded-xl shadow-md border max-w-md w-full mx-4">
             <div className="text-center mb-6">
