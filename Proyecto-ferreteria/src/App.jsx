@@ -935,7 +935,7 @@ export default function App() {
         <div className="h-screen flex items-center justify-center">
           <div className="bg-white p-8 rounded-xl shadow-md border max-w-md w-full mx-4">
             <div className="text-center mb-6">
-              <span className="brand-mark text-lg font-bold text-orange-600 tracking-tight">FerreSistema Pro</span>
+              <span className="brand-mark text-lg font-bold text-orange-600 tracking-tight">Ferreteria Valdez</span>
               <h2 className="text-xl font-bold mt-3">Acceso Administrativo</h2>
               <p className="text-xs text-gray-400 mt-1">Ingresa tus credenciales para gestionar tu inventario.</p>
             </div>
@@ -957,7 +957,7 @@ export default function App() {
           {/* Sidebar */}
           <div className="w-64 bg-slate-900 text-white flex flex-col h-screen shrink-0">
             <div className="px-5 py-5 border-b border-slate-700">
-              <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">FerreSistema Pro</span>
+              <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">Ferreteria Valdez</span>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-1">Control de Inventario</p>
             </div>
 
@@ -1026,7 +1026,7 @@ export default function App() {
                     <p className="text-2xl font-black text-green-600 mt-2">Q{formatQ(reportes.gananciaMes)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">⏳ Pendiente de Cobro</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Pendiente de Cobro</p>
                     <p className="text-2xl font-black text-orange-600 mt-2">Q{formatQ(reportes.pendienteTotal)}</p>
                     <p className="text-xs text-gray-400 mt-1">{reportes.pendienteCantidad} venta{reportes.pendienteCantidad != 1 ? 's' : ''} a crédito sin cobrar</p>
                   </div>
