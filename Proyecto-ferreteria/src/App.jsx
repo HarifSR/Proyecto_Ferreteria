@@ -4,6 +4,10 @@ import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import './App.css';
 
+// URL base de la API. Fija directamente a la API ya desplegada en Render
+// (si algún día cambias de dominio, solo edita esta línea).
+const API_URL = 'https://api-rest-kvcp.onrender.com';
+
 // ---- SweetAlert2 con la misma estética oscura del sistema ----
 const swalBase = {
   background: '#1A1E24',
@@ -127,21 +131,21 @@ export default function App() {
   // --------------------------------------------------------
   const cargarInventario = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/productos');
+      const res = await fetch(`${API_URL}/api/productos`);
       if (res.ok) setProductos(await res.json());
     } catch (error) { console.error("Error productos:", error); }
   };
 
   const cargarCategorias = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/categorias');
+      const res = await fetch(`${API_URL}/api/categorias`);
       if (res.ok) setCategorias(await res.json());
     } catch (error) { console.error("Error categorias:", error); }
   };
 
   const cargarUnidades = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/unidades');
+      const res = await fetch(`${API_URL}/api/unidades`);
       if (res.ok) setUnidades(await res.json());
     } catch (error) { console.error("Error unidades:", error); }
   };
@@ -149,7 +153,7 @@ export default function App() {
   const cargarReportesDashboard = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:5000/api/reportes/dashboard', {
+      const res = await fetch(`${API_URL}/api/reportes/dashboard`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -214,7 +218,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:5000/api/ventas', {
+      const res = await fetch(`${API_URL}/api/ventas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -244,7 +248,7 @@ export default function App() {
   const marcarVentaPagada = async (id) => {
     if (!(await confirmarAccion("¿Marcar como cobrada?", "Confirmas que esta venta a crédito ya fue cobrada.", "Sí, marcar cobrada"))) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/ventas/${id}/pagar`, {
+      const res = await fetch(`${API_URL}/api/ventas/${id}/pagar`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -257,7 +261,7 @@ export default function App() {
     setVentaExpandida(id);
     if (!detalleVenta[id]) {
       try {
-        const res = await fetch(`http://localhost:5000/api/ventas/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_URL}/api/ventas/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) { const data = await res.json(); setDetalleVenta(prev => ({ ...prev, [id]: { venta: data.venta, items: data.items } })); }
       } catch (error) { console.error('Error al cargar el detalle de la venta:', error); }
     }
@@ -291,7 +295,7 @@ export default function App() {
   const registrarCompra = async () => {
     if (lineasCompra.length === 0) { alertaAdvertencia("Agrega al menos un producto a la compra."); return; }
     try {
-      const res = await fetch('http://localhost:5000/api/compras', {
+      const res = await fetch(`${API_URL}/api/compras`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ items: lineasCompra, proveedor: proveedorCompra })
@@ -314,7 +318,7 @@ export default function App() {
     setCompraExpandida(id);
     if (!detalleCompra[id]) {
       try {
-        const res = await fetch(`http://localhost:5000/api/compras/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_URL}/api/compras/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) { const data = await res.json(); setDetalleCompra(prev => ({ ...prev, [id]: data.items })); }
       } catch (error) { console.error('Error al cargar el detalle de la compra:', error); }
     }
@@ -343,8 +347,8 @@ export default function App() {
     };
 
     const url = modoEdicion
-      ? `http://localhost:5000/api/productos/${nuevoProd.id}`
-      : 'http://localhost:5000/api/productos';
+      ? `${API_URL}/api/productos/${nuevoProd.id}`
+      : `${API_URL}/api/productos`;
 
     const metodo = modoEdicion ? 'PUT' : 'POST';
 
@@ -392,7 +396,7 @@ export default function App() {
   const manejarEliminarProducto = async (id_producto) => {
     if (!(await confirmarAccion("¿Eliminar producto?", `Se eliminará permanentemente el producto ${id_producto}.`, "Sí, eliminar"))) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/productos/${id_producto}`, {
+      const res = await fetch(`${API_URL}/api/productos/${id_producto}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -857,7 +861,7 @@ export default function App() {
     e.preventDefault();
     if (!nuevaCatNombre) return;
     try {
-      const res = await fetch('http://localhost:5000/api/categorias', {
+      const res = await fetch(`${API_URL}/api/categorias`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ nombre: nuevaCatNombre })
@@ -879,7 +883,7 @@ export default function App() {
     e.preventDefault();
     if (!nuevaUniNombre || !nuevaUniCodigo) return;
     try {
-      const res = await fetch('http://localhost:5000/api/unidades', {
+      const res = await fetch(`${API_URL}/api/unidades`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ nombre: nuevaUniNombre, codigo: nuevaUniCodigo })
@@ -904,7 +908,7 @@ export default function App() {
   const manejarLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
