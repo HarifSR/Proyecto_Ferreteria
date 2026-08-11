@@ -91,6 +91,7 @@ export default function App() {
   // --------------------------------------------------------
   const [productoVentaSel, setProductoVentaSel] = useState('');
   const [cantidadVentaSel, setCantidadVentaSel] = useState('1');
+  const [modoVentaSel, setModoVentaSel] = useState('unidad'); // 'unidad' | 'secundario'
   const [lineasVenta, setLineasVenta] = useState([]);
   const [tipoVentaNueva, setTipoVentaNueva] = useState('Contado');
   const [nombreClienteVenta, setNombreClienteVenta] = useState('');
@@ -106,6 +107,7 @@ export default function App() {
   const [productoCompraSel, setProductoCompraSel] = useState('');
   const [cantidadCompraSel, setCantidadCompraSel] = useState('1');
   const [costoCompraSel, setCostoCompraSel] = useState('');
+  const [modoCompraSel, setModoCompraSel] = useState('unidad'); // 'unidad' | 'secundario'
   const [proveedorCompra, setProveedorCompra] = useState('');
   const [lineasCompra, setLineasCompra] = useState([]);
   const [compraExpandida, setCompraExpandida] = useState(null);
@@ -115,7 +117,8 @@ export default function App() {
   // ESTADO: Formulario de Producto (Sirve para Crear y Editar)
   // --------------------------------------------------------
   const [nuevoProd, setNuevoProd] = useState({
-    id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '', imagen: ''
+    id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '', imagen: '',
+    unidad_secundaria_nombre: '', unidad_secundaria_cantidad: '', precio_secundario: ''
   });
   const [modoEdicion, setModoEdicion] = useState(false);
 
@@ -190,8 +193,17 @@ export default function App() {
   const agregarLineaVenta = () => {
     if (!productoVentaSel) { alertaAdvertencia("Selecciona un producto."); return; }
     const producto = productos.find(p => p.id === productoVentaSel);
-    const cantidad = parseFloat(cantidadVentaSel);
-    if (!cantidad || cantidad <= 0) { alertaAdvertencia("Ingresa una cantidad válida."); return; }
+    const cantidadIngresada = parseFloat(cantidadVentaSel);
+    if (!cantidadIngresada || cantidadIngresada <= 0) { alertaAdvertencia("Ingresa una cantidad válida."); return; }
+
+    // Si el usuario eligió vender por la presentación secundaria (ej. "Caja de 100"),
+    // convertimos todo a unidades base para que el stock y los reportes sigan siendo consistentes.
+    let cantidad = cantidadIngresada;
+    let precioUnitario = parseFloat(producto.precio);
+    if (modoVentaSel === 'secundario' && producto.unidad_secundaria_cantidad && producto.precio_secundario) {
+      cantidad = cantidadIngresada * producto.unidad_secundaria_cantidad;
+      precioUnitario = parseFloat(producto.precio_secundario) / producto.unidad_secundaria_cantidad;
+    }
 
     const existente = lineasVenta.find(l => l.producto_id === producto.id);
     if (existente) {
@@ -200,12 +212,13 @@ export default function App() {
       setLineasVenta([...lineasVenta, {
         producto_id: producto.id,
         nombre: producto.nombre,
-        precio_unitario: parseFloat(producto.precio),
+        precio_unitario: precioUnitario,
         cantidad
       }]);
     }
     setProductoVentaSel('');
     setCantidadVentaSel('1');
+    setModoVentaSel('unidad');
   };
 
   const quitarLineaVenta = (producto_id) => setLineasVenta(lineasVenta.filter(l => l.producto_id !== producto_id));
@@ -273,10 +286,19 @@ export default function App() {
   const agregarLineaCompra = () => {
     if (!productoCompraSel) { alertaAdvertencia("Selecciona un producto."); return; }
     const producto = productos.find(p => p.id === productoCompraSel);
-    const cantidad = parseFloat(cantidadCompraSel);
-    const costo = parseFloat(costoCompraSel);
-    if (!cantidad || cantidad <= 0) { alertaAdvertencia("Ingresa una cantidad válida."); return; }
-    if (!costo || costo < 0) { alertaAdvertencia("Ingresa el costo unitario de compra."); return; }
+    const cantidadIngresada = parseFloat(cantidadCompraSel);
+    const costoIngresado = parseFloat(costoCompraSel);
+    if (!cantidadIngresada || cantidadIngresada <= 0) { alertaAdvertencia("Ingresa una cantidad válida."); return; }
+    if (!costoIngresado || costoIngresado < 0) { alertaAdvertencia("Ingresa el costo de compra."); return; }
+
+    // Si compraste por la presentación secundaria (ej. "Caja de 100"), convertimos a
+    // unidades base: la cantidad se multiplica y el costo ingresado se reparte entre ellas.
+    let cantidad = cantidadIngresada;
+    let costo = costoIngresado;
+    if (modoCompraSel === 'secundario' && producto.unidad_secundaria_cantidad) {
+      cantidad = cantidadIngresada * producto.unidad_secundaria_cantidad;
+      costo = costoIngresado / producto.unidad_secundaria_cantidad;
+    }
 
     const existente = lineasCompra.find(l => l.producto_id === producto.id);
     if (existente) {
@@ -287,6 +309,7 @@ export default function App() {
     setProductoCompraSel('');
     setCantidadCompraSel('1');
     setCostoCompraSel('');
+    setModoCompraSel('unidad');
   };
 
   const quitarLineaCompra = (producto_id) => setLineasCompra(lineasCompra.filter(l => l.producto_id !== producto_id));
@@ -343,7 +366,10 @@ export default function App() {
       unidad_base_id: parseInt(nuevoProd.unidad_base_id) || 1,
       marca: nuevoProd.marca || 'Genérica',
       descripcion: nuevoProd.descripcion || '',
-      url_imagen: nuevoProd.imagen || null
+      url_imagen: nuevoProd.imagen || null,
+      unidad_secundaria_nombre: nuevoProd.unidad_secundaria_nombre || null,
+      unidad_secundaria_cantidad: nuevoProd.unidad_secundaria_cantidad ? parseInt(nuevoProd.unidad_secundaria_cantidad) : null,
+      precio_secundario: nuevoProd.precio_secundario ? parseFloat(nuevoProd.precio_secundario) : null
     };
 
     const url = modoEdicion
@@ -382,7 +408,10 @@ export default function App() {
       unidad_base_id: producto.unidad_base_id || '',
       marca: producto.marca || '',
       descripcion: producto.descripcion || '',
-      imagen: producto.url_imagen || ''
+      imagen: producto.url_imagen || '',
+      unidad_secundaria_nombre: producto.unidad_secundaria_nombre || '',
+      unidad_secundaria_cantidad: producto.unidad_secundaria_cantidad || '',
+      precio_secundario: producto.precio_secundario || ''
     });
     setSubSeccionAdmin('nuevo-producto'); // Lleva al usuario al formulario
     setModoCatalogo('producto');
@@ -390,7 +419,7 @@ export default function App() {
 
   const limpiarFormulario = () => {
     setModoEdicion(false);
-    setNuevoProd({ id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '', imagen: '' });
+    setNuevoProd({ id: '', nombre: '', precio: '', stock: '', categoria_id: '', unidad_base_id: '', marca: '', descripcion: '', imagen: '', unidad_secundaria_nombre: '', unidad_secundaria_cantidad: '', precio_secundario: '' });
   };
 
   const manejarEliminarProducto = async (id_producto) => {
@@ -935,7 +964,7 @@ export default function App() {
         <div className="h-screen flex items-center justify-center">
           <div className="bg-white p-8 rounded-xl shadow-md border max-w-md w-full mx-4">
             <div className="text-center mb-6">
-              <span className="brand-mark text-lg font-bold text-orange-600 tracking-tight">Ferreteria Valdez</span>
+              <span className="brand-mark text-lg font-bold text-orange-600 tracking-tight">FerreSistema Pro</span>
               <h2 className="text-xl font-bold mt-3">Acceso Administrativo</h2>
               <p className="text-xs text-gray-400 mt-1">Ingresa tus credenciales para gestionar tu inventario.</p>
             </div>
@@ -957,7 +986,7 @@ export default function App() {
           {/* Sidebar */}
           <div className="w-64 bg-slate-900 text-white flex flex-col h-screen shrink-0">
             <div className="px-5 py-5 border-b border-slate-700">
-              <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">Ferreteria Valdez</span>
+              <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">FerreSistema Pro</span>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-1">Control de Inventario</p>
             </div>
 
@@ -1026,7 +1055,7 @@ export default function App() {
                     <p className="text-2xl font-black text-green-600 mt-2">Q{formatQ(reportes.gananciaMes)}</p>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Pendiente de Cobro</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">⏳ Pendiente de Cobro</p>
                     <p className="text-2xl font-black text-orange-600 mt-2">Q{formatQ(reportes.pendienteTotal)}</p>
                     <p className="text-xs text-gray-400 mt-1">{reportes.pendienteCantidad} venta{reportes.pendienteCantidad != 1 ? 's' : ''} a crédito sin cobrar</p>
                   </div>
@@ -1363,15 +1392,29 @@ export default function App() {
 
                   <div>
                     <label className="text-xs font-bold text-gray-500">Producto</label>
-                    <select value={productoVentaSel} onChange={(e) => setProductoVentaSel(e.target.value)} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
+                    <select value={productoVentaSel} onChange={(e) => { setProductoVentaSel(e.target.value); setModoVentaSel('unidad'); }} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
                       <option value="">Seleccionar producto</option>
                       {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (Q{formatQ(parseFloat(p.precio))} · {parseFloat(p.cantidad_stock)} uds)</option>)}
                     </select>
                   </div>
 
+                  {(() => {
+                    const pSel = productos.find(pr => pr.id === productoVentaSel);
+                    if (!pSel || !pSel.unidad_secundaria_cantidad || !pSel.precio_secundario) return null;
+                    return (
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 mb-1 block">Vender por</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button type="button" onClick={() => setModoVentaSel('unidad')} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoVentaSel === 'unidad' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Unidad (Q{formatQ(parseFloat(pSel.precio))})</button>
+                          <button type="button" onClick={() => setModoVentaSel('secundario')} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoVentaSel === 'secundario' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{pSel.unidad_secundaria_nombre} (Q{formatQ(parseFloat(pSel.precio_secundario))})</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-500">Cantidad</label>
+                      <label className="text-xs font-bold text-gray-500">Cantidad {modoVentaSel === 'secundario' && '(en cajas/lotes, no en unidades)'}</label>
                       <input type="number" min="1" value={cantidadVentaSel} onChange={(e) => setCantidadVentaSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
                     </div>
                     <button type="button" onClick={agregarLineaVenta} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
@@ -1455,6 +1498,7 @@ export default function App() {
                     <select value={productoCompraSel} onChange={(e) => {
                       const idSeleccionado = e.target.value;
                       setProductoCompraSel(idSeleccionado);
+                      setModoCompraSel('unidad');
                       if (!costoCompraSel) {
                         const p = productos.find(pr => pr.id === idSeleccionado);
                         if (p && p.precio) setCostoCompraSel(parseFloat(p.precio).toFixed(2));
@@ -1465,13 +1509,27 @@ export default function App() {
                     </select>
                   </div>
 
+                  {(() => {
+                    const pSel = productos.find(pr => pr.id === productoCompraSel);
+                    if (!pSel || !pSel.unidad_secundaria_cantidad) return null;
+                    return (
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 mb-1 block">Comprar por</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button type="button" onClick={() => { setModoCompraSel('unidad'); setCostoCompraSel(parseFloat(pSel.precio).toFixed(2)); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'unidad' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Unidad</button>
+                          <button type="button" onClick={() => { setModoCompraSel('secundario'); if (pSel.precio_secundario) setCostoCompraSel(parseFloat(pSel.precio_secundario).toFixed(2)); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'secundario' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{pSel.unidad_secundaria_nombre}</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-500">Cantidad</label>
+                      <label className="text-xs font-bold text-gray-500">Cantidad {modoCompraSel === 'secundario' && '(en cajas/lotes)'}</label>
                       <input type="number" min="1" value={cantidadCompraSel} onChange={(e) => setCantidadCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-500">Costo unitario (Q)</label>
+                      <label className="text-xs font-bold text-gray-500">Costo {modoCompraSel === 'secundario' ? 'por lote' : 'unitario'} (Q)</label>
                       <input type="number" step="0.01" placeholder="0.00" value={costoCompraSel} onChange={(e) => setCostoCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
                     </div>
                     <button type="button" onClick={agregarLineaCompra} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
@@ -1604,6 +1662,25 @@ export default function App() {
                         </div>
                       </div>
                       <p className="text-[11px] text-gray-400 mt-1">Pega el enlace de una imagen ya subida a internet (por ejemplo, de Google Imágenes).</p>
+                    </div>
+
+                    <div className="pt-2 border-t">
+                      <p className="text-xs font-bold text-gray-500">Segunda Forma de Venta (opcional)</p>
+                      <p className="text-[11px] text-gray-400 mb-2">Para productos que también se venden por caja, ciento, docena, etc. Ej: Tornillo a Q0.70 la unidad, o Q70.00 la caja de 100.</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-500">Nombre</label>
+                          <input type="text" placeholder="Ej: Caja de 100" value={nuevoProd.unidad_secundaria_nombre} onChange={(e) => setNuevoProd({...nuevoProd, unidad_secundaria_nombre: e.target.value})} className="w-full p-2 border rounded text-sm" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-500">Unidades que trae</label>
+                          <input type="number" placeholder="Ej: 100" value={nuevoProd.unidad_secundaria_cantidad} onChange={(e) => setNuevoProd({...nuevoProd, unidad_secundaria_cantidad: e.target.value})} className="w-full p-2 border rounded text-sm" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-500">Precio (Q)</label>
+                          <input type="number" step="0.01" placeholder="Ej: 70.00" value={nuevoProd.precio_secundario} onChange={(e) => setNuevoProd({...nuevoProd, precio_secundario: e.target.value})} className="w-full p-2 border rounded text-sm" />
+                        </div>
+                      </div>
                     </div>
 
                     <button type="submit" className={`w-full text-white font-bold py-2.5 rounded-lg text-sm mt-2 transition ${modoEdicion ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
