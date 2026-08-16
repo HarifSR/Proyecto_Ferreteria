@@ -93,6 +93,8 @@ export default function App() {
   const [cantidadVentaSel, setCantidadVentaSel] = useState('1');
   const [modoVentaSel, setModoVentaSel] = useState('unidad'); // 'unidad' | 'secundario'
   const [lineasVenta, setLineasVenta] = useState([]);
+  const [ventaEditando, setVentaEditando] = useState(null);
+  const [ventaEditando, setVentaEditando] = useState(null);
   const [tipoVentaNueva, setTipoVentaNueva] = useState('Contado');
   const [nombreClienteVenta, setNombreClienteVenta] = useState('');
   const [direccionClienteVenta, setDireccionClienteVenta] = useState('');
@@ -110,6 +112,7 @@ export default function App() {
   const [modoCompraSel, setModoCompraSel] = useState('unidad'); // 'unidad' | 'secundario'
   const [proveedorCompra, setProveedorCompra] = useState('');
   const [lineasCompra, setLineasCompra] = useState([]);
+  const [compraEditando, setCompraEditando] = useState(null);
   const [compraExpandida, setCompraExpandida] = useState(null);
   const [detalleCompra, setDetalleCompra] = useState({});
 
@@ -232,8 +235,10 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch(`${API_URL}/api/ventas`, {
-        method: 'POST',
+      const url = ventaEditando ? `${API_URL}/api/ventas/${ventaEditando}` : `${API_URL}/api/ventas`;
+      const metodo = ventaEditando ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method: metodo,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           items: lineasVenta,
@@ -251,12 +256,61 @@ export default function App() {
         setNombreClienteVenta('');
         setDireccionClienteVenta('');
         setNitClienteVenta('');
+        if (ventaEditando) {
+          setVentaEditando(null);
+          setDetalleVenta(prev => { const copia = { ...prev }; delete copia[data.venta?.id || ventaEditando]; return copia; });
+        }
         cargarInventario();
         cargarReportesDashboard();
       } else {
         alertaError(data.error);
       }
     } catch (error) { alertaError("Error al registrar la venta."); }
+  };
+
+  const iniciarEdicionVenta = async (venta) => {
+    try {
+      const res = await fetch(`${API_URL}/api/ventas/${venta.id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) { alertaError('No se pudo cargar la venta para editar.'); return; }
+      const data = await res.json();
+      setLineasVenta(data.items.map(item => ({
+        producto_id: item.producto_id,
+        nombre: item.nombre || item.producto_id,
+        precio_unitario: parseFloat(item.precio_unitario),
+        cantidad: parseFloat(item.cantidad)
+      })));
+      setTipoVentaNueva(data.venta.tipo_venta);
+      setNombreClienteVenta(data.venta.cliente || '');
+      setDireccionClienteVenta(data.venta.cliente_direccion || '');
+      setNitClienteVenta(data.venta.cliente_nit || '');
+      setVentaEditando(venta.id);
+      setModoCatalogo('venta');
+      setSubSeccionAdmin('nuevo-producto');
+    } catch (error) { alertaError('Error al cargar la venta.'); }
+  };
+
+  const cancelarEdicionVenta = () => {
+    setVentaEditando(null);
+    setLineasVenta([]);
+    setTipoVentaNueva('Contado');
+    setNombreClienteVenta('');
+    setDireccionClienteVenta('');
+    setNitClienteVenta('');
+  };
+
+  const eliminarVenta = async (id) => {
+    if (!(await confirmarAccion("¿Eliminar esta venta?", `Se eliminará la venta #${id} y se devolverá el stock de sus productos.`, "Sí, eliminar"))) return;
+    try {
+      const res = await fetch(`${API_URL}/api/ventas/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok) {
+        alertaExito(data.mensaje);
+        cargarInventario();
+        cargarReportesDashboard();
+      } else {
+        alertaError(data.error);
+      }
+    } catch (error) { alertaError('Error al eliminar la venta.'); }
   };
 
   const marcarVentaPagada = async (id) => {
@@ -319,8 +373,10 @@ export default function App() {
   const registrarCompra = async () => {
     if (lineasCompra.length === 0) { alertaAdvertencia("Agrega al menos un producto a la compra."); return; }
     try {
-      const res = await fetch(`${API_URL}/api/compras`, {
-        method: 'POST',
+      const url = compraEditando ? `${API_URL}/api/compras/${compraEditando}` : `${API_URL}/api/compras`;
+      const metodo = compraEditando ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method: metodo,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ items: lineasCompra, proveedor: proveedorCompra })
       });
@@ -329,6 +385,10 @@ export default function App() {
         alertaExito(data.mensaje);
         setLineasCompra([]);
         setProveedorCompra('');
+        if (compraEditando) {
+          setCompraEditando(null);
+          setDetalleCompra(prev => { const copia = { ...prev }; delete copia[data.compra?.id || compraEditando]; return copia; });
+        }
         cargarInventario();
         cargarReportesDashboard();
       } else {
@@ -337,13 +397,52 @@ export default function App() {
     } catch (error) { alertaError("Error al registrar la compra."); }
   };
 
+  const iniciarEdicionCompra = async (compra) => {
+    try {
+      const res = await fetch(`${API_URL}/api/compras/${compra.id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) { alertaError('No se pudo cargar la compra para editar.'); return; }
+      const data = await res.json();
+      setLineasCompra(data.items.map(item => ({
+        producto_id: item.producto_id,
+        nombre: item.nombre || item.producto_id,
+        costo_unitario: parseFloat(item.costo_unitario),
+        cantidad: parseFloat(item.cantidad)
+      })));
+      setProveedorCompra(data.compra.proveedor || '');
+      setCompraEditando(compra.id);
+      setModoCatalogo('compra');
+      setSubSeccionAdmin('nuevo-producto');
+    } catch (error) { alertaError('Error al cargar la compra.'); }
+  };
+
+  const cancelarEdicionCompra = () => {
+    setCompraEditando(null);
+    setLineasCompra([]);
+    setProveedorCompra('');
+  };
+
+  const eliminarCompra = async (id) => {
+    if (!(await confirmarAccion("¿Eliminar esta compra?", `Se eliminará la compra #${id} y se restará el stock que había ingresado.`, "Sí, eliminar"))) return;
+    try {
+      const res = await fetch(`${API_URL}/api/compras/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok) {
+        alertaExito(data.mensaje);
+        cargarInventario();
+        cargarReportesDashboard();
+      } else {
+        alertaError(data.error);
+      }
+    } catch (error) { alertaError('Error al eliminar la compra.'); }
+  };
+
   const alternarDetalleCompra = async (id) => {
     if (compraExpandida === id) { setCompraExpandida(null); return; }
     setCompraExpandida(id);
     if (!detalleCompra[id]) {
       try {
         const res = await fetch(`${API_URL}/api/compras/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) { const data = await res.json(); setDetalleCompra(prev => ({ ...prev, [id]: data.items })); }
+        if (res.ok) { const data = await res.json(); setDetalleCompra(prev => ({ ...prev, [id]: { compra: data.compra, items: data.items } })); }
       } catch (error) { console.error('Error al cargar el detalle de la compra:', error); }
     }
   };
@@ -1277,10 +1376,12 @@ export default function App() {
                             <td className="p-4 text-gray-700">{venta.cliente || '—'}</td>
                             <td className="p-4 text-gray-500">{venta.items} artículo{venta.items != 1 ? 's' : ''}</td>
                             <td className="p-4 font-bold">Q{formatQ(parseFloat(venta.total))}</td>
-                            <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="p-4 text-right space-x-1.5" onClick={(e) => e.stopPropagation()}>
                               {venta.estado === 'Pendiente' && (
                                 <button onClick={() => marcarVentaPagada(venta.id)} className="bg-green-100 text-green-700 hover:bg-green-200 text-xs font-bold px-2.5 py-1 rounded transition">Marcar Cobrada</button>
                               )}
+                              <button onClick={() => iniciarEdicionVenta(venta)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-2.5 py-1 rounded transition">Editar</button>
+                              <button onClick={() => eliminarVenta(venta.id)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-2.5 py-1 rounded transition">Eliminar</button>
                             </td>
                           </tr>
                           {ventaExpandida === venta.id && (
@@ -1336,6 +1437,7 @@ export default function App() {
                         <th className="p-4">Artículos</th>
                         <th className="p-4">Total</th>
                         <th className="p-4"></th>
+                        <th className="p-4"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -1348,13 +1450,17 @@ export default function App() {
                             <td className="p-4 text-gray-500">{compra.items} artículo{compra.items != 1 ? 's' : ''}</td>
                             <td className="p-4 font-bold">Q{formatQ(parseFloat(compra.total))}</td>
                             <td className="p-4 text-right text-gray-400">{compraExpandida === compra.id ? '▲' : '▼'}</td>
+                            <td className="p-4 text-right space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                              <button onClick={() => iniciarEdicionCompra(compra)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-2.5 py-1 rounded transition">Editar</button>
+                              <button onClick={() => eliminarCompra(compra.id)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-2.5 py-1 rounded transition">Eliminar</button>
+                            </td>
                           </tr>
                           {compraExpandida === compra.id && (
                             <tr>
-                              <td colSpan={6} className="p-4 bg-gray-50">
+                              <td colSpan={7} className="p-4 bg-gray-50">
                                 {!detalleCompra[compra.id] ? <p className="text-xs text-gray-400">Cargando detalle...</p> : (
                                   <div className="divide-y">
-                                    {detalleCompra[compra.id].map((item, i) => (
+                                    {detalleCompra[compra.id].items.map((item, i) => (
                                       <div key={i} className="py-2 flex justify-between text-sm">
                                         <div>
                                           <p className="font-semibold text-gray-700">{item.nombre || item.producto_id}</p>
@@ -1367,6 +1473,7 @@ export default function App() {
                                 )}
                               </td>
                             </tr>
+
                           )}
                         </React.Fragment>
                       ))}
@@ -1387,9 +1494,14 @@ export default function App() {
 
                 {/* Panel de Registrar Venta */}
                 <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-                  <div>
-                    <h3 className="font-bold text-gray-800">Registrar Venta</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Añade los productos vendidos y elige si fue al contado o al crédito.</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-gray-800">{ventaEditando ? `Editar Venta #${ventaEditando}` : 'Registrar Venta'}</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">{ventaEditando ? 'Corrige los productos, cantidades o datos del comprador.' : 'Añade los productos vendidos y elige si fue al contado o al crédito.'}</p>
+                    </div>
+                    {ventaEditando && (
+                      <button onClick={cancelarEdicionVenta} className="text-xs text-blue-600 font-bold hover:underline shrink-0 ml-4">Cancelar Edición</button>
+                    )}
                   </div>
 
                   <div>
@@ -1477,7 +1589,7 @@ export default function App() {
                     <span>Total:</span><span>Q{formatQ(calcularTotalVenta())}</span>
                   </div>
                   <button onClick={registrarVenta} className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}>
-                    {tipoVentaNueva === 'Crédito' ? 'Registrar Venta a Crédito' : 'Registrar Venta al Contado'}
+                    {ventaEditando ? 'Guardar Cambios' : (tipoVentaNueva === 'Crédito' ? 'Registrar Venta a Crédito' : 'Registrar Venta al Contado')}
                   </button>
                   <p className="text-[11px] text-gray-400 text-center">El historial de ventas ahora vive en la sección Reportes.</p>
                 </div>
@@ -1490,9 +1602,14 @@ export default function App() {
 
                 {/* Panel de Registrar Compra */}
                 <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-                  <div>
-                    <h3 className="font-bold text-gray-800">Registrar Compra</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Registra la mercadería comprada a tus proveedores; el stock se actualiza solo.</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-gray-800">{compraEditando ? `Editar Compra #${compraEditando}` : 'Registrar Compra'}</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">{compraEditando ? 'Corrige los productos, cantidades o el proveedor.' : 'Registra la mercadería comprada a tus proveedores; el stock se actualiza solo.'}</p>
+                    </div>
+                    {compraEditando && (
+                      <button onClick={cancelarEdicionCompra} className="text-xs text-blue-600 font-bold hover:underline shrink-0 ml-4">Cancelar Edición</button>
+                    )}
                   </div>
 
                   <div>
@@ -1574,7 +1691,7 @@ export default function App() {
                   <div className="pt-3 border-t font-black text-lg flex justify-between">
                     <span>Total:</span><span>Q{formatQ(calcularTotalCompra())}</span>
                   </div>
-                  <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Registrar Compra</button>
+                  <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">{compraEditando ? 'Guardar Cambios' : 'Registrar Compra'}</button>
                   <p className="text-[11px] text-gray-400 text-center">El historial de compras ahora vive en la sección Reportes.</p>
                 </div>
 
