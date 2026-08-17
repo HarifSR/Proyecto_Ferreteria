@@ -94,7 +94,6 @@ export default function App() {
   const [modoVentaSel, setModoVentaSel] = useState('unidad'); // 'unidad' | 'secundario'
   const [lineasVenta, setLineasVenta] = useState([]);
   const [ventaEditando, setVentaEditando] = useState(null);
-  const [ventaEditando, setVentaEditando] = useState(null);
   const [tipoVentaNueva, setTipoVentaNueva] = useState('Contado');
   const [nombreClienteVenta, setNombreClienteVenta] = useState('');
   const [direccionClienteVenta, setDireccionClienteVenta] = useState('');
