@@ -1,0 +1,2 @@
+// Formatea un monto en Quetzales con separador de miles (Q1,234.56) para que se lea sin confusiones
+export const formatQ = (valor) => (Number(valor) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
