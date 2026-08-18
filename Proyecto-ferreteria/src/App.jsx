@@ -59,6 +59,10 @@ export default function App() {
   // --------------------------------------------------------
   const [subSeccionAdmin, setSubSeccionAdmin] = useState('reportes');
   const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [usuarioActual, setUsuarioActual] = useState(() => {
+    const guardado = localStorage.getItem('usuarioActual');
+    return guardado ? JSON.parse(guardado) : null;
+  });
 
   // Login
   const [email, setEmail] = useState('');
@@ -134,6 +138,13 @@ export default function App() {
   const [nuevaUniCodigo, setNuevaUniCodigo] = useState('');
 
   // --------------------------------------------------------
+  // ESTADO: Gestión de Usuarios
+  // --------------------------------------------------------
+  const [usuarios, setUsuarios] = useState([]);
+  const [nuevoUsuario, setNuevoUsuario] = useState({ nombre: '', email: '', password: '', rol: 'administrador' });
+  const [usuarioEditando, setUsuarioEditando] = useState(null); // null | id
+
+  // --------------------------------------------------------
   // CONEXIONES A BASE DE DATOS
   // --------------------------------------------------------
   const cargarInventario = async () => {
@@ -155,6 +166,66 @@ export default function App() {
       const res = await fetch(`${API_URL}/api/unidades`);
       if (res.ok) setUnidades(await res.json());
     } catch (error) { console.error("Error unidades:", error); }
+  };
+
+  // --------------------------------------------------------
+  // GESTIÓN DE USUARIOS
+  // --------------------------------------------------------
+  const cargarUsuarios = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/usuarios`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) setUsuarios(await res.json());
+    } catch (error) { console.error("Error usuarios:", error); }
+  };
+
+  const limpiarFormularioUsuario = () => {
+    setUsuarioEditando(null);
+    setNuevoUsuario({ nombre: '', email: '', password: '', rol: 'administrador' });
+  };
+
+  const iniciarEdicionUsuario = (u) => {
+    setUsuarioEditando(u.id);
+    setNuevoUsuario({ nombre: u.nombre, email: u.email, password: '', rol: u.rol });
+  };
+
+  const manejarGuardarUsuario = async (e) => {
+    e.preventDefault();
+    if (!nuevoUsuario.nombre || !nuevoUsuario.email || (!usuarioEditando && !nuevoUsuario.password)) {
+      alertaAdvertencia("Completa nombre, correo y contraseña.");
+      return;
+    }
+    try {
+      const url = usuarioEditando ? `${API_URL}/api/usuarios/${usuarioEditando}` : `${API_URL}/api/usuarios`;
+      const metodo = usuarioEditando ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method: metodo,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(nuevoUsuario)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alertaExito(data.mensaje);
+        limpiarFormularioUsuario();
+        cargarUsuarios();
+      } else {
+        alertaError(data.error);
+      }
+    } catch (error) { alertaError("Error al guardar el usuario."); }
+  };
+
+  const eliminarUsuario = async (u) => {
+    if (!(await confirmarAccion("¿Eliminar este usuario?", `Se eliminará la cuenta de ${u.nombre} (${u.email}).`, "Sí, eliminar"))) return;
+    try {
+      const res = await fetch(`${API_URL}/api/usuarios/${u.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok) {
+        alertaExito(data.mensaje);
+        cargarUsuarios();
+      } else {
+        alertaError(data.error);
+      }
+    } catch (error) { alertaError("Error al eliminar el usuario."); }
   };
 
   const cargarReportesDashboard = async () => {
@@ -190,6 +261,11 @@ export default function App() {
     if ((subSeccionAdmin === 'reportes' || (subSeccionAdmin === 'nuevo-producto' && modoCatalogo !== 'producto')) && token) cargarReportesDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subSeccionAdmin, modoCatalogo, token]);
+
+  useEffect(() => {
+    if (subSeccionAdmin === 'usuarios' && token) cargarUsuarios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subSeccionAdmin, token]);
 
   // --------------------------------------------------------
   // REGISTRO DE VENTAS (Contado suma a la ganancia, Crédito queda pendiente)
@@ -1045,12 +1121,13 @@ export default function App() {
       const data = await res.json();
       if (res.ok && data.token) {
         setToken(data.token); localStorage.setItem('token', data.token);
+        setUsuarioActual(data.usuario); localStorage.setItem('usuarioActual', JSON.stringify(data.usuario));
         setEmail(''); setPassword(''); setSubSeccionAdmin('reportes');
       } else { alertaError("Credenciales incorrectas"); }
     } catch (error) { alertaError("Error de servidor"); }
   };
 
-  const cerrarSesion = () => { setToken(''); localStorage.removeItem('token'); setSubSeccionAdmin('ver-inventario'); };
+  const cerrarSesion = () => { setToken(''); setUsuarioActual(null); localStorage.removeItem('token'); localStorage.removeItem('usuarioActual'); setSubSeccionAdmin('ver-inventario'); };
 
   const productosFiltradosAdmin = productos.filter(p => p.nombre.toLowerCase().includes(busquedaAdmin.toLowerCase()) || p.id.toLowerCase().includes(busquedaAdmin.toLowerCase()));
 
@@ -1113,6 +1190,13 @@ export default function App() {
               <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('producto'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'producto' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Nuevo Producto</button>
               <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('venta'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'venta' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Registrar Venta</button>
               <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('compra'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'compra' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Registrar Compra</button>
+
+              {usuarioActual?.rol === 'administrador' && (
+                <>
+                  <p className="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Administración</p>
+                  <button onClick={() => { setSubSeccionAdmin('usuarios'); limpiarFormularioUsuario(); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'usuarios' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Usuarios</button>
+                </>
+              )}
             </div>
 
             <div className="p-3 border-t border-slate-700">
@@ -1850,6 +1934,90 @@ export default function App() {
               </div>
                 )}
 
+              </div>
+            )}
+
+            {/* GESTIÓN DE USUARIOS */}
+            {subSeccionAdmin === 'usuarios' && usuarioActual?.rol !== 'administrador' && (
+              <div className="bg-white p-8 rounded-xl border shadow-sm text-center">
+                <p className="font-bold text-gray-800">Acceso restringido</p>
+                <p className="text-sm text-gray-400 mt-1">Solo un administrador puede gestionar usuarios.</p>
+              </div>
+            )}
+            {subSeccionAdmin === 'usuarios' && usuarioActual?.rol === 'administrador' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border overflow-hidden h-fit">
+                  <div className="p-5 border-b">
+                    <h3 className="font-bold text-gray-900">Usuarios del Sistema</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Quiénes pueden entrar al panel administrativo.</p>
+                  </div>
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
+                      <tr>
+                        <th className="p-4">Nombre</th>
+                        <th className="p-4">Correo</th>
+                        <th className="p-4">Rol</th>
+                        <th className="p-4 text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {usuarios.length === 0 ? (
+                        <tr><td colSpan={4} className="p-8 text-center text-gray-400">Aún no hay usuarios registrados.</td></tr>
+                      ) : usuarios.map(u => (
+                        <tr key={u.id} className="hover:bg-gray-50 transition">
+                          <td className="p-4 font-semibold">
+                            {u.nombre}
+                            {usuarioActual && usuarioActual.id === u.id && <span className="ml-2 text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Tú</span>}
+                          </td>
+                          <td className="p-4 text-gray-500">{u.email}</td>
+                          <td className="p-4">
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${u.rol === 'administrador' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-700'}`}>{u.rol === 'administrador' ? 'Administrador' : 'Operador'}</span>
+                          </td>
+                          <td className="p-4 text-center space-x-2">
+                            <button onClick={() => iniciarEdicionUsuario(u)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded transition">Editar</button>
+                            <button onClick={() => eliminarUsuario(u)} className="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded transition">Eliminar</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border shadow-sm h-fit">
+                  <div className="flex justify-between items-start mb-4 border-b pb-3">
+                    <div>
+                      <h3 className="font-bold text-gray-800">{usuarioEditando ? 'Editar Usuario' : 'Nuevo Usuario'}</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">{usuarioEditando ? 'Deja la contraseña en blanco para no cambiarla.' : 'Crea un acceso nuevo al sistema.'}</p>
+                    </div>
+                    {usuarioEditando && (
+                      <button onClick={limpiarFormularioUsuario} className="text-xs text-blue-600 font-bold hover:underline shrink-0 ml-2">Cancelar</button>
+                    )}
+                  </div>
+                  <form onSubmit={manejarGuardarUsuario} className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500">Nombre</label>
+                      <input type="text" placeholder="Ej: Juan Pérez" value={nuevoUsuario.nombre} onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, nombre: e.target.value })} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500">Correo electrónico</label>
+                      <input type="email" placeholder="correo@ferreteria.com" value={nuevoUsuario.email} onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, email: e.target.value })} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500">Contraseña {usuarioEditando && <span className="text-gray-400 font-normal">(opcional)</span>}</label>
+                      <input type="password" placeholder={usuarioEditando ? 'Dejar en blanco para no cambiar' : 'Mínimo 6 caracteres'} value={nuevoUsuario.password} onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, password: e.target.value })} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500">Rol</label>
+                      <select value={nuevoUsuario.rol} onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, rol: e.target.value })} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
+                        <option value="administrador">Administrador (acceso completo al panel)</option>
+                        <option value="operador">Operador (acceso al sistema, sin gestionar usuarios)</option>
+                      </select>
+                    </div>
+                    <button type="submit" className={`w-full text-white font-bold py-2.5 rounded-lg text-sm mt-2 transition ${usuarioEditando ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
+                      {usuarioEditando ? 'Guardar Cambios' : 'Crear Usuario'}
+                    </button>
+                  </form>
+                </div>
               </div>
             )}
 

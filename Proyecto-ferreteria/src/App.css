@@ -251,6 +251,7 @@ select option { color: var(--text) !important; background-color: var(--surface-2
 .mt-4 { margin-top: 1rem; }
 .mt-6 { margin-top: 1.5rem; }
 .mt-10 { margin-top: 2.5rem; }
+.ml-2 { margin-left: 0.5rem; }
 .ml-4 { margin-left: 1rem; }
 
 .max-w-7xl { max-width: 80rem; }
