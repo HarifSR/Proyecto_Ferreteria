@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { alertaError } from './alerts';
+import { formatQ } from './format';
 
 export const exportarReportesExcel = async (reportes) => {
   const wb = new ExcelJS.Workbook();
@@ -73,6 +74,9 @@ export const exportarReportesExcel = async (reportes) => {
     sub.value = `FerreSistema Pro · Generado el ${new Date().toLocaleDateString('es-GT', { day: '2-digit', month: 'long', year: 'numeric' })}`;
     sub.font = { italic: true, size: 9, color: { argb: 'FF8A94A0' } };
     hoja.addRow([]);
+    const linkVolver = hoja.getCell('A3');
+    linkVolver.value = { text: '← Volver a Portada', hyperlink: "#'Portada'!A1" };
+    linkVolver.font = { size: 9, color: { argb: 'FF5B92E5' }, underline: true };
   };
 
   // Dibuja una gráfica de barras agrupadas en un canvas y la devuelve como PNG base64
@@ -173,6 +177,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 0: PORTADA ============
   const hPortada = wb.addWorksheet('Portada');
+  hPortada.properties.tabColor = { argb: NAVY };
   hPortada.columns = [{ width: 4 }, { width: 30 }, { width: 30 }, { width: 30 }, { width: 4 }];
   hPortada.mergeCells('B2:D2');
   hPortada.getCell('B2').value = 'FerreSistema Pro';
@@ -213,8 +218,41 @@ export const exportarReportesExcel = async (reportes) => {
     hPortada.addImage(imgId0, { tl: { col: 1, row: 11 }, ext: { width: 720, height: 315 } });
   }
 
+  // Índice con enlaces directos a cada hoja del documento
+  const filaIndiceTitulo = 30;
+  hPortada.getCell(`B${filaIndiceTitulo}`).value = 'Índice de Hojas';
+  hPortada.getCell(`B${filaIndiceTitulo}`).font = { bold: true, size: 12, color: { argb: NAVY } };
+  hPortada.getRow(filaIndiceTitulo).height = 20;
+
+  const hojasIndice = [
+    ['Resumen', 'Resumen general de indicadores'],
+    ['Comparativas', 'Semana / mes / año vs. periodo anterior'],
+    ['Top Valor Inventario', 'Productos con mayor valor inmovilizado'],
+    ['Reabastecimiento', 'Productos con stock bajo'],
+    ['Categorías', 'Valor de inventario por categoría'],
+    ['Ventas vs Compras', 'Tendencia mensual (últimos 12 meses)'],
+    ['Más Vendidos', 'Top 10 productos más vendidos'],
+    ['Menos Vendidos', 'Top 10 productos menos vendidos'],
+    ['Ventas por Producto', 'Cantidad vendida, histórico completo'],
+    ['Historial Ventas', 'Detalle de ventas recientes'],
+    ['Historial Compras', 'Detalle de compras recientes']
+  ];
+
+  hojasIndice.forEach(([nombreHoja, descripcion], i) => {
+    const fila = filaIndiceTitulo + 1 + i;
+    const celdaLink = hPortada.getCell(`B${fila}`);
+    celdaLink.value = { text: `→ ${nombreHoja}`, hyperlink: `#'${nombreHoja}'!A1` };
+    celdaLink.font = { color: { argb: 'FF5B92E5' }, underline: true, bold: true, size: 10 };
+    hPortada.mergeCells(`C${fila}:D${fila}`);
+    const celdaDesc = hPortada.getCell(`C${fila}`);
+    celdaDesc.value = descripcion;
+    celdaDesc.font = { size: 9, italic: true, color: { argb: 'FF5B6570' } };
+    hPortada.getRow(fila).height = 18;
+  });
+
   // ============ HOJA 1: RESUMEN GENERAL ============
   const hResumen = wb.addWorksheet('Resumen');
+  hResumen.properties.tabColor = { argb: NAVY };
   hResumen.columns = [{ width: 42 }, { width: 22 }];
   tituloHoja(hResumen, 'Resumen General del Negocio');
   const filaEncResumen = hResumen.addRow(['Indicador', 'Valor']);
@@ -239,6 +277,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 2: COMPARATIVA POR PERIODO ============
   const hComp = wb.addWorksheet('Comparativas');
+  hComp.properties.tabColor = { argb: NAVY };
   hComp.columns = [{ width: 26 }, { width: 14 }, { width: 16 }, { width: 16 }, { width: 14 }];
   tituloHoja(hComp, 'Comparativa por Periodo (Actual vs. Anterior)');
   const filaEncComp = hComp.addRow(['Periodo', 'Métrica', 'Actual', 'Anterior', 'Variación']);
@@ -261,6 +300,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 3: TOP VALOR EN INVENTARIO ============
   const hTop = wb.addWorksheet('Top Valor Inventario');
+  hTop.properties.tabColor = { argb: AMBER };
   hTop.columns = [{ width: 34 }, { width: 18 }, { width: 12 }, { width: 16 }, { width: 16 }];
   tituloHoja(hTop, 'Top 5 — Mayor Valor en Inventario');
   const filaEncTop = hTop.addRow(['Producto', 'Marca', 'Stock', 'Precio Unitario', 'Valor Total']);
@@ -277,6 +317,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 4: REABASTECIMIENTO ============
   const hReab = wb.addWorksheet('Reabastecimiento');
+  hReab.properties.tabColor = { argb: RED };
   hReab.columns = [{ width: 14 }, { width: 40 }, { width: 16 }];
   tituloHoja(hReab, 'Requiere Reabastecimiento');
   const filaEncReab = hReab.addRow(['Código', 'Producto', 'Stock Actual']);
@@ -293,6 +334,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 5: VALOR POR CATEGORÍA ============
   const hCat = wb.addWorksheet('Categorías');
+  hCat.properties.tabColor = { argb: STEEL };
   hCat.columns = [{ width: 28 }, { width: 20 }, { width: 18 }];
   tituloHoja(hCat, 'Valor de Inventario por Categoría');
   const filaEncCat = hCat.addRow(['Categoría', 'Cantidad de Productos', 'Valor Total']);
@@ -306,6 +348,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 6: VENTAS VS COMPRAS (12 MESES) ============
   const hSerie = wb.addWorksheet('Ventas vs Compras');
+  hSerie.properties.tabColor = { argb: NAVY };
   hSerie.columns = [{ width: 16 }, { width: 16 }, { width: 16 }, { width: 4 }];
   tituloHoja(hSerie, 'Ventas vs Compras — Últimos 12 Meses');
   const filaEncSerie = hSerie.addRow(['Mes', 'Ventas', 'Compras']);
@@ -331,6 +374,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 6.1: TOP 10 MÁS VENDIDOS ============
   const hMasVendidos = wb.addWorksheet('Más Vendidos');
+  hMasVendidos.properties.tabColor = { argb: GREEN };
   hMasVendidos.columns = [{ width: 6 }, { width: 34 }, { width: 18 }, { width: 14 }, { width: 16 }];
   tituloHoja(hMasVendidos, 'Top 10 Productos Más Vendidos');
   const filaEncMasVendidos = hMasVendidos.addRow(['#', 'Producto', 'Marca', 'Cantidad Vendida', 'Ingresos']);
@@ -350,6 +394,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 6.2: TOP 10 MENOS VENDIDOS ============
   const hMenosVendidos = wb.addWorksheet('Menos Vendidos');
+  hMenosVendidos.properties.tabColor = { argb: RED };
   hMenosVendidos.columns = [{ width: 6 }, { width: 34 }, { width: 18 }, { width: 14 }, { width: 16 }];
   tituloHoja(hMenosVendidos, 'Top 10 Productos Menos Vendidos');
   const filaEncMenosVendidos = hMenosVendidos.addRow(['#', 'Producto', 'Marca', 'Cantidad Vendida', 'Ingresos']);
@@ -364,6 +409,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 6.3: VENTAS POR PRODUCTO (TODOS, DETALLADO) ============
   const hVentasProducto = wb.addWorksheet('Ventas por Producto');
+  hVentasProducto.properties.tabColor = { argb: STEEL };
   hVentasProducto.columns = [{ width: 34 }, { width: 18 }, { width: 16 }, { width: 16 }];
   tituloHoja(hVentasProducto, 'Cantidad Vendida por Producto (Histórico Completo)');
   const filaEncVentasProducto = hVentasProducto.addRow(['Producto', 'Marca', 'Cantidad Vendida', 'Ingresos']);
@@ -378,6 +424,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 7: HISTORIAL DE VENTAS ============
   const hVentas = wb.addWorksheet('Historial Ventas');
+  hVentas.properties.tabColor = { argb: NAVY };
   hVentas.columns = [{ width: 10 }, { width: 20 }, { width: 12 }, { width: 14 }, { width: 22 }, { width: 14 }, { width: 12 }, { width: 14 }];
   tituloHoja(hVentas, 'Historial de Ventas Recientes');
   const filaEncVentas = hVentas.addRow(['Venta #', 'Fecha', 'Tipo', 'Estado', 'Cliente', 'NIT', 'Artículos', 'Total']);
@@ -406,6 +453,7 @@ export const exportarReportesExcel = async (reportes) => {
 
   // ============ HOJA 8: HISTORIAL DE COMPRAS ============
   const hCompras = wb.addWorksheet('Historial Compras');
+  hCompras.properties.tabColor = { argb: STEEL };
   hCompras.columns = [{ width: 10 }, { width: 20 }, { width: 22 }, { width: 12 }, { width: 14 }];
   tituloHoja(hCompras, 'Historial de Compras Recientes');
   const filaEncCompras = hCompras.addRow(['Compra #', 'Fecha', 'Proveedor', 'Artículos', 'Total']);
