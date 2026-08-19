@@ -9,7 +9,7 @@ export default function Sidebar({
     <>
       {/* Barra superior solo en móvil */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-slate-900 text-white flex items-center justify-between px-4 z-40 border-b border-slate-700">
-        <span className="brand-mark text-base font-bold text-yellow-500 tracking-tight">FerreSistema Pro</span>
+        <span className="brand-mark text-base font-bold text-yellow-500 tracking-tight">Ferretería Valdez</span>
         <button onClick={() => setMenuMovilAbierto(true)} aria-label="Abrir menú" className="text-white text-2xl leading-none px-2">☰</button>
       </div>
 
@@ -22,7 +22,7 @@ export default function Sidebar({
       <div className={`w-64 bg-slate-900 text-white flex flex-col h-screen shrink-0 fixed md:static top-0 left-0 z-50 transition-transform ${menuMovilAbierto ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="px-5 py-5 border-b border-slate-700 flex justify-between items-center">
           <div>
-            <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">FerreSistema Pro</span>
+            <span className="brand-mark text-lg font-bold text-yellow-500 tracking-tight">Ferretería Valdez</span>
             <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-1">Control de Inventario</p>
           </div>
           <button onClick={() => setMenuMovilAbierto(false)} aria-label="Cerrar menú" className="md:hidden text-gray-400 hover:text-white text-xl leading-none px-1">×</button>

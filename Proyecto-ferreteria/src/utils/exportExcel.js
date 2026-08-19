@@ -4,7 +4,7 @@ import { formatQ } from './format';
 
 export const exportarReportesExcel = async (reportes) => {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'FerreSistema Pro';
+  wb.creator = 'Ferretería Valdez';
   wb.created = new Date();
 
   // Paleta de marca (mismos colores del sistema)
@@ -71,7 +71,7 @@ export const exportarReportesExcel = async (reportes) => {
     celda.font = { bold: true, size: 15, color: { argb: NAVY } };
     hoja.getRow(1).height = 28;
     const sub = hoja.getCell('A2');
-    sub.value = `FerreSistema Pro · Generado el ${new Date().toLocaleDateString('es-GT', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+    sub.value = `Ferretería Valdez · Generado el ${new Date().toLocaleDateString('es-GT', { day: '2-digit', month: 'long', year: 'numeric' })}`;
     sub.font = { italic: true, size: 9, color: { argb: 'FF8A94A0' } };
     hoja.addRow([]);
     const linkVolver = hoja.getCell('A3');
@@ -180,7 +180,7 @@ export const exportarReportesExcel = async (reportes) => {
   hPortada.properties.tabColor = { argb: NAVY };
   hPortada.columns = [{ width: 4 }, { width: 30 }, { width: 30 }, { width: 30 }, { width: 4 }];
   hPortada.mergeCells('B2:D2');
-  hPortada.getCell('B2').value = 'FerreSistema Pro';
+  hPortada.getCell('B2').value = 'Ferretería Valdez';
   hPortada.getCell('B2').font = { bold: true, size: 22, color: { argb: NAVY } };
   hPortada.mergeCells('B3:D3');
   hPortada.getCell('B3').value = 'Reporte General del Negocio';
@@ -482,7 +482,7 @@ export const exportarReportesExcel = async (reportes) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Reporte_FerreSistema_${new Date().toLocaleDateString('es-GT').replace(/\//g, '-')}.xlsx`;
+    link.download = `Reporte_FerreteriaValdez_${new Date().toLocaleDateString('es-GT').replace(/\//g, '-')}.xlsx`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
