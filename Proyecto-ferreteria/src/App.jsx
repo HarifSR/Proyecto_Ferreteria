@@ -901,6 +901,225 @@ export default function App() {
                 })()}
               </div>
 
+              </div>
+            )}
+
+            {/* GESTION DE CATALOGOS: Nuevo Producto / Venta / Compra (modo elegido desde el sidebar) */}
+            {subSeccionAdmin === 'nuevo-producto' && (
+              <div className="space-y-6">
+
+                {modoCatalogo === 'venta' && (
+                <div className="space-y-6">
+
+                {/* Panel de Registrar Venta */}
+                <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-gray-800">{ventaEditando ? `Editar Venta #${ventaEditando}` : 'Registrar Venta'}</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">{ventaEditando ? 'Corrige los productos, cantidades o datos del comprador.' : 'Añade los productos vendidos y elige si fue al contado o al crédito.'}</p>
+                    </div>
+                    {ventaEditando && (
+                      <button onClick={cancelarEdicionVenta} className="text-xs text-blue-600 font-bold hover:underline shrink-0 ml-4">Cancelar Edición</button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">Producto</label>
+                    <select value={productoVentaSel} onChange={(e) => { setProductoVentaSel(e.target.value); setModoVentaSel('unidad'); }} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
+                      <option value="">Seleccionar producto</option>
+                      {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (Q{formatQ(parseFloat(p.precio))} · {parseFloat(p.cantidad_stock)} uds)</option>)}
+                    </select>
+                  </div>
+
+                  {(() => {
+                    const pSel = productos.find(pr => pr.id === productoVentaSel);
+                    if (!pSel || !pSel.unidad_secundaria_cantidad || !pSel.precio_secundario) return null;
+                    return (
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 mb-1 block">Vender por</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button type="button" onClick={() => setModoVentaSel('unidad')} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoVentaSel === 'unidad' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Unidad (Q{formatQ(parseFloat(pSel.precio))})</button>
+                          <button type="button" onClick={() => setModoVentaSel('secundario')} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoVentaSel === 'secundario' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{pSel.unidad_secundaria_nombre} (Q{formatQ(parseFloat(pSel.precio_secundario))})</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-gray-500">Cantidad {modoVentaSel === 'secundario' && '(en cajas/lotes, no en unidades)'}</label>
+                      <input type="number" min="1" value={cantidadVentaSel} onChange={(e) => setCantidadVentaSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <button type="button" onClick={agregarLineaVenta} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
+                  </div>
+
+                  {productoVentaSel && (() => {
+                    const p = productos.find(pr => pr.id === productoVentaSel);
+                    if (!p) return null;
+                    return (
+                      <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
+                        <span className="font-semibold text-gray-800">{p.nombre}</span>
+                        <span className="text-blue-700 font-bold">Q{formatQ(parseFloat(p.precio))} <span className="text-gray-400 font-normal">· {parseFloat(p.cantidad_stock)} disponibles</span></span>
+                      </div>
+                    );
+                  })()}
+
+                  {lineasVenta.length > 0 && (
+                    <div className="divide-y border rounded-lg">
+                      {lineasVenta.map(l => (
+                        <div key={l.producto_id} className="p-2.5 flex justify-between items-center text-sm">
+                          <div>
+                            <p className="font-semibold">{l.nombre}</p>
+                            <p className="text-xs text-gray-400">{l.cantidad} × Q{formatQ(l.precio_unitario)}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold">Q{formatQ((l.cantidad * l.precio_unitario))}</span>
+                            <button onClick={() => quitarLineaVenta(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Quitar</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 mb-2">Tipo de Venta</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => setTipoVentaNueva('Contado')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVentaNueva === 'Contado' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Contado</button>
+                      <button type="button" onClick={() => setTipoVentaNueva('Crédito')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Crédito</button>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      {tipoVentaNueva === 'Crédito' ? 'Quedará pendiente de cobro hasta que la marques como pagada.' : 'Se suma de inmediato a la ganancia del día.'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 mb-2">
+                      Datos del Comprador {tipoVentaNueva === 'Crédito' ? <span className="text-red-500">(obligatorio)</span> : <span className="text-gray-400 font-normal">(opcional)</span>}
+                    </p>
+                    <div className="space-y-2">
+                      <input type="text" placeholder="Nombre" value={nombreClienteVenta} onChange={(e) => setNombreClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                      <input type="text" placeholder="Dirección" value={direccionClienteVenta} onChange={(e) => setDireccionClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                      <input type="text" placeholder="NIT" value={nitClienteVenta} onChange={(e) => setNitClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                    </div>
+                    {tipoVentaNueva === 'Crédito' && <p className="text-[11px] text-gray-400 mt-1">Necesitamos identificar al comprador cuando se fía la mercadería.</p>}
+                  </div>
+
+                  <div className="pt-3 border-t font-black text-lg flex justify-between">
+                    <span>Total:</span><span>Q{formatQ(calcularTotalVenta())}</span>
+                  </div>
+                  <button onClick={registrarVenta} className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}>
+                    {ventaEditando ? 'Guardar Cambios' : (tipoVentaNueva === 'Crédito' ? 'Registrar Venta a Crédito' : 'Registrar Venta al Contado')}
+                  </button>
+                  <p className="text-[11px] text-gray-400 text-center">Revisa el historial completo en la pestaña "Historial".</p>
+                </div>
+
+                </div>
+                )}
+
+                {modoCatalogo === 'compra' && (
+                <div className="space-y-6">
+
+                {/* Panel de Registrar Compra */}
+                <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-gray-800">{compraEditando ? `Editar Compra #${compraEditando}` : 'Registrar Compra'}</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">{compraEditando ? 'Corrige los productos, cantidades o el proveedor.' : 'Registra la mercadería comprada a tus proveedores; el stock se actualiza solo.'}</p>
+                    </div>
+                    {compraEditando && (
+                      <button onClick={cancelarEdicionCompra} className="text-xs text-blue-600 font-bold hover:underline shrink-0 ml-4">Cancelar Edición</button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">Producto</label>
+                    <select value={productoCompraSel} onChange={(e) => {
+                      const idSeleccionado = e.target.value;
+                      setProductoCompraSel(idSeleccionado);
+                      setModoCompraSel('unidad');
+                      if (!costoCompraSel) {
+                        const p = productos.find(pr => pr.id === idSeleccionado);
+                        if (p && p.precio) setCostoCompraSel(parseFloat(p.precio).toFixed(2));
+                      }
+                    }} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
+                      <option value="">Seleccionar producto</option>
+                      {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} ({parseFloat(p.cantidad_stock)} uds)</option>)}
+                    </select>
+                  </div>
+
+                  {(() => {
+                    const pSel = productos.find(pr => pr.id === productoCompraSel);
+                    if (!pSel || !pSel.unidad_secundaria_cantidad) return null;
+                    return (
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 mb-1 block">Comprar por</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button type="button" onClick={() => { setModoCompraSel('unidad'); setCostoCompraSel(parseFloat(pSel.precio).toFixed(2)); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'unidad' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Unidad</button>
+                          <button type="button" onClick={() => { setModoCompraSel('secundario'); if (pSel.precio_secundario) setCostoCompraSel(parseFloat(pSel.precio_secundario).toFixed(2)); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'secundario' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{pSel.unidad_secundaria_nombre}</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-gray-500">Cantidad {modoCompraSel === 'secundario' && '(en cajas/lotes)'}</label>
+                      <input type="number" min="1" value={cantidadCompraSel} onChange={(e) => setCantidadCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-gray-500">Costo {modoCompraSel === 'secundario' ? 'por lote' : 'unitario'} (Q)</label>
+                      <input type="number" step="0.01" placeholder="0.00" value={costoCompraSel} onChange={(e) => setCostoCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
+                    </div>
+                    <button type="button" onClick={agregarLineaCompra} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
+                  </div>
+
+                  {productoCompraSel && (() => {
+                    const p = productos.find(pr => pr.id === productoCompraSel);
+                    if (!p) return null;
+                    return (
+                      <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
+                        <span className="font-semibold text-gray-800">{p.nombre}</span>
+                        <span className="text-gray-400">Stock actual: <span className="text-blue-700 font-bold">{parseFloat(p.cantidad_stock)}</span> uds · Precio de venta: Q{formatQ(parseFloat(p.precio))}</span>
+                      </div>
+                    );
+                  })()}
+                  <p className="text-[11px] text-gray-400">El costo se sugiere igual al precio de venta actual; ajústalo al monto real que pagaste al proveedor.</p>
+
+                  {lineasCompra.length > 0 && (
+                    <div className="divide-y border rounded-lg">
+                      {lineasCompra.map(l => (
+                        <div key={l.producto_id} className="p-2.5 flex justify-between items-center text-sm">
+                          <div>
+                            <p className="font-semibold">{l.nombre}</p>
+                            <p className="text-xs text-gray-400">{l.cantidad} × Q{formatQ(l.costo_unitario)}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold">Q{formatQ((l.cantidad * l.costo_unitario))}</span>
+                            <button onClick={() => quitarLineaCompra(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Quitar</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">Proveedor (opcional)</label>
+                    <input type="text" placeholder="Ej: Cementos Progreso" value={proveedorCompra} onChange={(e) => setProveedorCompra(e.target.value)} className="w-full p-2 border rounded mt-1 text-sm" />
+                  </div>
+
+                  <div className="pt-3 border-t font-black text-lg flex justify-between">
+                    <span>Total:</span><span>Q{formatQ(calcularTotalCompra())}</span>
+                  </div>
+                  <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">{compraEditando ? 'Guardar Cambios' : 'Registrar Compra'}</button>
+                  <p className="text-[11px] text-gray-400 text-center">Revisa el historial completo en la pestaña "Historial".</p>
+                </div>
+
+                </div>
+                )}
+
+                {modoCatalogo === 'historial' && (
+                <div className="space-y-6">
+
               {/* Historial de Ventas */}
               <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                 <div className="p-5 border-b">
@@ -1047,219 +1266,6 @@ export default function App() {
                   </table>
                 )}
               </div>
-
-              </div>
-            )}
-
-            {/* GESTION DE CATALOGOS: Nuevo Producto / Venta / Compra (modo elegido desde el sidebar) */}
-            {subSeccionAdmin === 'nuevo-producto' && (
-              <div className="space-y-6">
-
-                {modoCatalogo === 'venta' && (
-                <div className="space-y-6">
-
-                {/* Panel de Registrar Venta */}
-                <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-gray-800">{ventaEditando ? `Editar Venta #${ventaEditando}` : 'Registrar Venta'}</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">{ventaEditando ? 'Corrige los productos, cantidades o datos del comprador.' : 'Añade los productos vendidos y elige si fue al contado o al crédito.'}</p>
-                    </div>
-                    {ventaEditando && (
-                      <button onClick={cancelarEdicionVenta} className="text-xs text-blue-600 font-bold hover:underline shrink-0 ml-4">Cancelar Edición</button>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-gray-500">Producto</label>
-                    <select value={productoVentaSel} onChange={(e) => { setProductoVentaSel(e.target.value); setModoVentaSel('unidad'); }} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
-                      <option value="">Seleccionar producto</option>
-                      {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (Q{formatQ(parseFloat(p.precio))} · {parseFloat(p.cantidad_stock)} uds)</option>)}
-                    </select>
-                  </div>
-
-                  {(() => {
-                    const pSel = productos.find(pr => pr.id === productoVentaSel);
-                    if (!pSel || !pSel.unidad_secundaria_cantidad || !pSel.precio_secundario) return null;
-                    return (
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 mb-1 block">Vender por</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button type="button" onClick={() => setModoVentaSel('unidad')} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoVentaSel === 'unidad' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Unidad (Q{formatQ(parseFloat(pSel.precio))})</button>
-                          <button type="button" onClick={() => setModoVentaSel('secundario')} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoVentaSel === 'secundario' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{pSel.unidad_secundaria_nombre} (Q{formatQ(parseFloat(pSel.precio_secundario))})</button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-500">Cantidad {modoVentaSel === 'secundario' && '(en cajas/lotes, no en unidades)'}</label>
-                      <input type="number" min="1" value={cantidadVentaSel} onChange={(e) => setCantidadVentaSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
-                    </div>
-                    <button type="button" onClick={agregarLineaVenta} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
-                  </div>
-
-                  {productoVentaSel && (() => {
-                    const p = productos.find(pr => pr.id === productoVentaSel);
-                    if (!p) return null;
-                    return (
-                      <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
-                        <span className="font-semibold text-gray-800">{p.nombre}</span>
-                        <span className="text-blue-700 font-bold">Q{formatQ(parseFloat(p.precio))} <span className="text-gray-400 font-normal">· {parseFloat(p.cantidad_stock)} disponibles</span></span>
-                      </div>
-                    );
-                  })()}
-
-                  {lineasVenta.length > 0 && (
-                    <div className="divide-y border rounded-lg">
-                      {lineasVenta.map(l => (
-                        <div key={l.producto_id} className="p-2.5 flex justify-between items-center text-sm">
-                          <div>
-                            <p className="font-semibold">{l.nombre}</p>
-                            <p className="text-xs text-gray-400">{l.cantidad} × Q{formatQ(l.precio_unitario)}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-bold">Q{formatQ((l.cantidad * l.precio_unitario))}</span>
-                            <button onClick={() => quitarLineaVenta(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Quitar</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="text-xs font-bold text-gray-500 mb-2">Tipo de Venta</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => setTipoVentaNueva('Contado')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVentaNueva === 'Contado' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Contado</button>
-                      <button type="button" onClick={() => setTipoVentaNueva('Crédito')} className={`py-2 rounded-lg text-sm font-semibold border transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Crédito</button>
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-1">
-                      {tipoVentaNueva === 'Crédito' ? 'Quedará pendiente de cobro hasta que la marques como pagada.' : 'Se suma de inmediato a la ganancia del día.'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-bold text-gray-500 mb-2">
-                      Datos del Comprador {tipoVentaNueva === 'Crédito' ? <span className="text-red-500">(obligatorio)</span> : <span className="text-gray-400 font-normal">(opcional)</span>}
-                    </p>
-                    <div className="space-y-2">
-                      <input type="text" placeholder="Nombre" value={nombreClienteVenta} onChange={(e) => setNombreClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
-                      <input type="text" placeholder="Dirección" value={direccionClienteVenta} onChange={(e) => setDireccionClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
-                      <input type="text" placeholder="NIT" value={nitClienteVenta} onChange={(e) => setNitClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
-                    </div>
-                    {tipoVentaNueva === 'Crédito' && <p className="text-[11px] text-gray-400 mt-1">Necesitamos identificar al comprador cuando se fía la mercadería.</p>}
-                  </div>
-
-                  <div className="pt-3 border-t font-black text-lg flex justify-between">
-                    <span>Total:</span><span>Q{formatQ(calcularTotalVenta())}</span>
-                  </div>
-                  <button onClick={registrarVenta} className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${tipoVentaNueva === 'Crédito' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}>
-                    {ventaEditando ? 'Guardar Cambios' : (tipoVentaNueva === 'Crédito' ? 'Registrar Venta a Crédito' : 'Registrar Venta al Contado')}
-                  </button>
-                  <p className="text-[11px] text-gray-400 text-center">El historial de ventas ahora vive en la sección Reportes.</p>
-                </div>
-
-                </div>
-                )}
-
-                {modoCatalogo === 'compra' && (
-                <div className="space-y-6">
-
-                {/* Panel de Registrar Compra */}
-                <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-gray-800">{compraEditando ? `Editar Compra #${compraEditando}` : 'Registrar Compra'}</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">{compraEditando ? 'Corrige los productos, cantidades o el proveedor.' : 'Registra la mercadería comprada a tus proveedores; el stock se actualiza solo.'}</p>
-                    </div>
-                    {compraEditando && (
-                      <button onClick={cancelarEdicionCompra} className="text-xs text-blue-600 font-bold hover:underline shrink-0 ml-4">Cancelar Edición</button>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-gray-500">Producto</label>
-                    <select value={productoCompraSel} onChange={(e) => {
-                      const idSeleccionado = e.target.value;
-                      setProductoCompraSel(idSeleccionado);
-                      setModoCompraSel('unidad');
-                      if (!costoCompraSel) {
-                        const p = productos.find(pr => pr.id === idSeleccionado);
-                        if (p && p.precio) setCostoCompraSel(parseFloat(p.precio).toFixed(2));
-                      }
-                    }} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
-                      <option value="">Seleccionar producto</option>
-                      {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} ({parseFloat(p.cantidad_stock)} uds)</option>)}
-                    </select>
-                  </div>
-
-                  {(() => {
-                    const pSel = productos.find(pr => pr.id === productoCompraSel);
-                    if (!pSel || !pSel.unidad_secundaria_cantidad) return null;
-                    return (
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 mb-1 block">Comprar por</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button type="button" onClick={() => { setModoCompraSel('unidad'); setCostoCompraSel(parseFloat(pSel.precio).toFixed(2)); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'unidad' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Unidad</button>
-                          <button type="button" onClick={() => { setModoCompraSel('secundario'); if (pSel.precio_secundario) setCostoCompraSel(parseFloat(pSel.precio_secundario).toFixed(2)); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'secundario' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{pSel.unidad_secundaria_nombre}</button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-500">Cantidad {modoCompraSel === 'secundario' && '(en cajas/lotes)'}</label>
-                      <input type="number" min="1" value={cantidadCompraSel} onChange={(e) => setCantidadCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-500">Costo {modoCompraSel === 'secundario' ? 'por lote' : 'unitario'} (Q)</label>
-                      <input type="number" step="0.01" placeholder="0.00" value={costoCompraSel} onChange={(e) => setCostoCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
-                    </div>
-                    <button type="button" onClick={agregarLineaCompra} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
-                  </div>
-
-                  {productoCompraSel && (() => {
-                    const p = productos.find(pr => pr.id === productoCompraSel);
-                    if (!p) return null;
-                    return (
-                      <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
-                        <span className="font-semibold text-gray-800">{p.nombre}</span>
-                        <span className="text-gray-400">Stock actual: <span className="text-blue-700 font-bold">{parseFloat(p.cantidad_stock)}</span> uds · Precio de venta: Q{formatQ(parseFloat(p.precio))}</span>
-                      </div>
-                    );
-                  })()}
-                  <p className="text-[11px] text-gray-400">El costo se sugiere igual al precio de venta actual; ajústalo al monto real que pagaste al proveedor.</p>
-
-                  {lineasCompra.length > 0 && (
-                    <div className="divide-y border rounded-lg">
-                      {lineasCompra.map(l => (
-                        <div key={l.producto_id} className="p-2.5 flex justify-between items-center text-sm">
-                          <div>
-                            <p className="font-semibold">{l.nombre}</p>
-                            <p className="text-xs text-gray-400">{l.cantidad} × Q{formatQ(l.costo_unitario)}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-bold">Q{formatQ((l.cantidad * l.costo_unitario))}</span>
-                            <button onClick={() => quitarLineaCompra(l.producto_id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Quitar</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="text-xs font-bold text-gray-500">Proveedor (opcional)</label>
-                    <input type="text" placeholder="Ej: Cementos Progreso" value={proveedorCompra} onChange={(e) => setProveedorCompra(e.target.value)} className="w-full p-2 border rounded mt-1 text-sm" />
-                  </div>
-
-                  <div className="pt-3 border-t font-black text-lg flex justify-between">
-                    <span>Total:</span><span>Q{formatQ(calcularTotalCompra())}</span>
-                  </div>
-                  <button onClick={registrarCompra} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">{compraEditando ? 'Guardar Cambios' : 'Registrar Compra'}</button>
-                  <p className="text-[11px] text-gray-400 text-center">El historial de compras ahora vive en la sección Reportes.</p>
-                </div>
 
                 </div>
                 )}
