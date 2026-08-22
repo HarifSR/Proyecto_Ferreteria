@@ -1500,7 +1500,7 @@ export default function App() {
               <div className="space-y-4">
                 <input type="text" placeholder="Buscar por nombre o código de producto..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} className="p-2.5 border rounded-lg text-sm w-full max-w-sm" />
 
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden hidden md:block">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
                       <tr>
@@ -1540,6 +1540,37 @@ export default function App() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Vista de tarjetas para móvil: se muestra en vez de la tabla en pantallas pequeñas */}
+                <div className="md:hidden space-y-3">
+                  {productosFiltradosAdmin.length === 0 ? (
+                    <div className="bg-white rounded-xl border p-8 text-center text-gray-400 text-sm">No hay productos que coincidan con tu búsqueda.</div>
+                  ) : productosFiltradosAdmin.map(p => (
+                    <div key={p.id} className="bg-white rounded-xl shadow-sm border p-4">
+                      <div onClick={() => setProductoDetalle(p)} className="flex items-center gap-3 cursor-pointer">
+                        <div className="w-12 h-12 rounded-lg border bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center">
+                          {p.url_imagen ? (
+                            <img src={p.url_imagen} alt={p.nombre} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                          ) : null}
+                          <span className="text-gray-300 text-base" style={{ display: p.url_imagen ? 'none' : 'flex' }}></span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="sku text-[11px] text-gray-400">{p.id}</p>
+                          <p className="font-semibold text-gray-900 leading-tight">{p.nombre}</p>
+                          <p className="text-xs text-gray-500">{p.marca || '—'}</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mt-3 pt-3 border-t">
+                        <span className="font-bold text-gray-900">Q{formatQ(parseFloat(p.precio))}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${p.cantidad_stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{parseFloat(p.cantidad_stock)} uds</span>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => iniciarEdicion(p)} className="flex-1 bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold py-2 rounded transition">Editar</button>
+                        <button onClick={() => manejarEliminarProducto(p.id)} className="flex-1 bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold py-2 rounded transition">Eliminar</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

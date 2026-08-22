@@ -117,8 +117,10 @@ select option { color: var(--text) !important; background-color: var(--surface-2
 .w-64 { width: 16rem; }
 .w-10 { width: 2.5rem; }
 .w-14 { width: 3.5rem; }
+.w-12 { width: 3rem; }
 .h-10 { height: 2.5rem; }
 .h-14 { height: 3.5rem; }
+.h-12 { height: 3rem; }
 .object-cover { object-fit: cover; }
 .items-start { align-items: flex-start; }
 .h-fit { height: fit-content; }
@@ -137,7 +139,10 @@ select option { color: var(--text) !important; background-color: var(--surface-2
 .overflow-x-auto { overflow-x: auto; }
 .inline-block { display: inline-block; }
 .block { display: block; }
+.hidden { display: none; }
 .leading-none { line-height: 1; }
+.leading-tight { line-height: 1.25; }
+.min-w-0 { min-width: 0; }
 .overflow-y-auto { overflow-y: auto; }
 .sticky { position: sticky; }
 .top-6 { top: 1.5rem; }
@@ -415,6 +420,7 @@ th, td { padding: 0.85rem 1rem; vertical-align: middle; }
   .sm\:px-8 { padding-left: 2rem; padding-right: 2rem; }
 }
 @media (min-width: 768px) {
+  .md\:block { display: block; }
   .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .md\:col-span-2 { grid-column: span 2 / span 2; }
