@@ -1037,10 +1037,7 @@ export default function App() {
                       const idSeleccionado = e.target.value;
                       setProductoCompraSel(idSeleccionado);
                       setModoCompraSel('unidad');
-                      if (!costoCompraSel) {
-                        const p = productos.find(pr => pr.id === idSeleccionado);
-                        if (p && p.precio) setCostoCompraSel(parseFloat(p.precio).toFixed(2));
-                      }
+                      setCostoCompraSel('');
                     }} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
                       <option value="">Seleccionar producto</option>
                       {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} ({parseFloat(p.cantidad_stock)} uds)</option>)}
@@ -1054,8 +1051,8 @@ export default function App() {
                       <div>
                         <label className="text-xs font-bold text-gray-500 mb-1 block">Comprar por</label>
                         <div className="grid grid-cols-2 gap-2">
-                          <button type="button" onClick={() => { setModoCompraSel('unidad'); setCostoCompraSel(parseFloat(pSel.precio).toFixed(2)); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'unidad' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Unidad</button>
-                          <button type="button" onClick={() => { setModoCompraSel('secundario'); if (pSel.precio_secundario) setCostoCompraSel(parseFloat(pSel.precio_secundario).toFixed(2)); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'secundario' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{pSel.unidad_secundaria_nombre}</button>
+                          <button type="button" onClick={() => { setModoCompraSel('unidad'); setCostoCompraSel(''); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'unidad' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Unidad</button>
+                          <button type="button" onClick={() => { setModoCompraSel('secundario'); setCostoCompraSel(''); }} className={`py-1.5 rounded-lg text-xs font-semibold border transition ${modoCompraSel === 'secundario' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>{pSel.unidad_secundaria_nombre}</button>
                         </div>
                       </div>
                     );
@@ -1083,7 +1080,7 @@ export default function App() {
                       </div>
                     );
                   })()}
-                  <p className="text-[11px] text-gray-400">El costo se sugiere igual al precio de venta actual; ajústalo al monto real que pagaste al proveedor.</p>
+                  <p className="text-[11px] text-gray-400">Ingresa el monto real que pagaste al proveedor por esta compra.</p>
 
                   {lineasCompra.length > 0 && (
                     <div className="divide-y border rounded-lg">
