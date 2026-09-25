@@ -7,7 +7,7 @@ export default function KardexPage({ productos, token }) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Kardex</h2>
+        <h2 className="text-xl font-bold text-gray-900">Movimientos por Producto <span className="text-sm font-normal text-gray-400">(Kardex)</span></h2>
         <p className="text-sm text-gray-400 mt-0.5">Historial de entradas y salidas de un producto, con su saldo acumulado.</p>
       </div>
 
