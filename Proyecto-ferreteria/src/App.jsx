@@ -9,6 +9,7 @@ import { exportarReportesExcel } from './utils/exportExcel';
 import Sidebar from './components/Sidebar';
 import LoginScreen from './components/LoginScreen';
 import ProductoDetalleModal from './components/ProductoDetalleModal';
+import KardexPage from './pages/KardexPage';
 
 export default function App() {
   // --------------------------------------------------------
@@ -1490,6 +1491,11 @@ export default function App() {
                   </form>
                 </div>
               </div>
+            )}
+
+            {/* KARDEX POR PRODUCTO */}
+            {subSeccionAdmin === 'kardex' && (
+              <KardexPage productos={productos} token={token} />
             )}
 
             {/* INVENTARIO MAESTRO CON ACCIONES */}

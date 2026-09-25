@@ -167,6 +167,7 @@ select option { color: var(--text) !important; background-color: var(--surface-2
 .flex { display: flex; }
 .flex-1 { flex: 1 1 0%; min-width: 0; }
 .flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
 .justify-between { justify-content: space-between; }
 .justify-center { justify-content: center; }
 .items-center { align-items: center; }
@@ -320,6 +321,7 @@ select option { color: var(--text) !important; background-color: var(--surface-2
 .text-green-700 { color: #2E9E56; }
 .text-green-800 { color: #74E39B; }
 .text-red-500 { color: var(--danger); }
+.text-red-600 { color: var(--danger); }
 .text-red-400 { color: #F58A81; }
 .text-red-700 { color: #F58A81; }
 .text-red-800 { color: #F5A099; }
