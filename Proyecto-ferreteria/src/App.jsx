@@ -1067,7 +1067,7 @@ export default function App() {
                       <input type="number" min="1" value={cantidadCompraSel} onChange={(e) => setCantidadCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-500">Costo {modoCompraSel === 'secundario' ? 'por lote' : 'unitario'} (Q)</label>
+                      <label className="text-xs font-bold text-gray-500">Costo de Compra {modoCompraSel === 'secundario' ? '(por lote)' : ''} (Q)</label>
                       <input type="number" step="0.01" placeholder="0.00" value={costoCompraSel} onChange={(e) => setCostoCompraSel(e.target.value)} className="w-full p-2 border rounded text-sm mt-1" />
                     </div>
                     <button type="button" onClick={agregarLineaCompra} className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded font-bold transition shrink-0">Agregar</button>
@@ -1079,7 +1079,7 @@ export default function App() {
                     return (
                       <div className="flex justify-between items-center bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-sm">
                         <span className="font-semibold text-gray-800">{p.nombre}</span>
-                        <span className="text-gray-400">Stock actual: <span className="text-blue-700 font-bold">{parseFloat(p.cantidad_stock)}</span> uds · Precio de venta: Q{formatQ(parseFloat(p.precio))}</span>
+                        <span className="text-gray-400">Stock actual: <span className="text-blue-700 font-bold">{parseFloat(p.cantidad_stock)}</span> uds</span>
                       </div>
                     );
                   })()}
