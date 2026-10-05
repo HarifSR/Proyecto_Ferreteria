@@ -29,6 +29,9 @@ export default function App() {
     return guardado ? JSON.parse(guardado) : null;
   });
 
+  // Solo el Administrador ve la información financiera (ganancias, costos de compra, etc.)
+  const esAdmin = usuarioActual?.rol === 'administrador';
+
   // Login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -685,17 +688,21 @@ export default function App() {
                     <h2 className="text-lg font-bold text-gray-900">Panel de Reportes</h2>
                     <p className="text-xs text-gray-400 mt-0.5">Resumen general del negocio, actualizado en tiempo real.</p>
                   </div>
+                  {esAdmin && (
                   <button onClick={() => exportarReportesExcel(reportes)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition shrink-0">
                     Exportar Reporte Completo
                   </button>
+                  )}
                 </div>
 
                 {/* Tarjetas KPI principales */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {esAdmin && (
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-5 rounded-2xl shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wider opacity-80">Valor del Inventario</p>
                     <p className="text-2xl font-black mt-2">Q{formatQ(reportes.valorInventario)}</p>
                   </div>
+                  )}
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Productos Registrados</p>
                     <p className="text-2xl font-black mt-2">{reportes.totalProductos}</p>
@@ -712,6 +719,8 @@ export default function App() {
                   </div>
                 </div>
 
+                {esAdmin && (
+                <>
                 {/* Ganancia y pendientes de cobro */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white p-5 rounded-2xl border shadow-sm">
@@ -734,8 +743,12 @@ export default function App() {
                   </div>
                 </div>
 
+                </>
+                )}
+
                 {/* Tablas de Detalles */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {esAdmin && (
                   <div className="bg-white p-5 rounded-xl border shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-4">Top 5 con Mayor Valor en Inventario</h3>
                     <div className="divide-y text-sm">
@@ -750,6 +763,8 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+
+                  )}
 
                   <div className="bg-white p-5 rounded-xl border shadow-sm">
                     <h3 className="font-bold text-red-500 mb-4">Requiere Reabastecimiento</h3>
@@ -777,7 +792,7 @@ export default function App() {
                         <div key={prod.id} className="py-2.5 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-gray-800">{idx + 1}. {prod.nombre}</p>
-                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}Ingresos: Q{formatQ(prod.ingresos)}</p>
+                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca}` : ''}{esAdmin ? `${prod.marca ? ' · ' : ''}Ingresos: Q${formatQ(prod.ingresos)}` : ''}</p>
                           </div>
                           <span className="bg-green-100 text-green-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">{prod.cantidadVendida} uds</span>
                         </div>
@@ -793,7 +808,7 @@ export default function App() {
                         <div key={prod.id} className="py-2.5 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-gray-800">{idx + 1}. {prod.nombre}</p>
-                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca} · ` : ''}Ingresos: Q{formatQ(prod.ingresos)}</p>
+                            <p className="text-xs text-gray-400">{prod.marca ? `${prod.marca}` : ''}{esAdmin ? `${prod.marca ? ' · ' : ''}Ingresos: Q${formatQ(prod.ingresos)}` : ''}</p>
                           </div>
                           <span className="bg-red-100 text-red-800 font-mono text-xs font-black px-2.5 py-1 rounded-full">{prod.cantidadVendida} uds</span>
                         </div>
@@ -802,6 +817,8 @@ export default function App() {
                   </div>
                 </div>
 
+                {esAdmin && (
+                <>
                 {/* Valor de inventario por categoría */}
                 {reportes.valorPorCategoria.length > 0 && (
                   <div className="bg-white p-5 rounded-xl border shadow-sm">
@@ -902,6 +919,8 @@ export default function App() {
                 })()}
               </div>
 
+                </>
+                )}
               </div>
             )}
 
@@ -1017,7 +1036,14 @@ export default function App() {
                 </div>
                 )}
 
-                {modoCatalogo === 'compra' && (
+                {modoCatalogo === 'compra' && !esAdmin && (
+                  <div className="bg-white p-8 rounded-xl border shadow-sm text-center">
+                    <p className="font-bold text-gray-800">Acceso restringido</p>
+                    <p className="text-sm text-gray-400 mt-1">Solo un administrador puede registrar compras.</p>
+                  </div>
+                )}
+
+                {modoCatalogo === 'compra' && esAdmin && (
                 <div className="space-y-6">
 
                 {/* Panel de Registrar Compra */}
@@ -1204,6 +1230,7 @@ export default function App() {
               </div>
 
               {/* Historial de Compras */}
+              {esAdmin && (
               <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                 <div className="p-5 border-b">
                   <h3 className="font-bold text-gray-900">Historial de Compras</h3>
@@ -1264,6 +1291,7 @@ export default function App() {
                   </table>
                 )}
               </div>
+              )}
 
                 </div>
                 )}

@@ -1,3 +1,23 @@
+// Oscurece un color hexadecimal un cierto porcentaje (para el tono "hover" a juego).
+function oscurecerColor(hex, porcentaje = 18) {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const ajuste = Math.round(255 * (porcentaje / 100));
+  let r = Math.max(0, (num >> 16) - ajuste);
+  let g = Math.max(0, ((num >> 8) & 0x00ff) - ajuste);
+  let b = Math.max(0, (num & 0x0000ff) - ajuste);
+  return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+}
+
+// Cambia el color de marca del sistema EN VIVO, en el navegador.
+// Es solo visual y temporal: no se guarda ni afecta a otros usuarios ni al código fuente;
+// se restablece al recargar la página. Pensado para demostraciones.
+function cambiarColorMarca(hex) {
+  document.documentElement.style.setProperty('--amber', hex);
+  document.documentElement.style.setProperty('--amber-dark', oscurecerColor(hex));
+}
+
+const COLORES_PRESET = ['#C7860A', '#2563EB', '#16A34A', '#DC2626', '#7C3AED', '#0D9488'];
+
 export default function Sidebar({
   subSeccionAdmin, setSubSeccionAdmin,
   modoCatalogo, setModoCatalogo,
@@ -35,7 +55,9 @@ export default function Sidebar({
           <p className="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Productos y Catálogos</p>
           <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('producto'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'producto' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Nuevo Producto</button>
           <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('venta'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'venta' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Registrar Venta</button>
-          <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('compra'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'compra' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Registrar Compra</button>
+          {usuarioActual?.rol === 'administrador' && (
+            <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('compra'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'compra' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Registrar Compra</button>
+          )}
           <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('historial'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'historial' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Historial</button>
           <button onClick={() => { setSubSeccionAdmin('kardex'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'kardex' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Movimientos por Producto</button>
 
@@ -45,6 +67,32 @@ export default function Sidebar({
               <button onClick={() => { setSubSeccionAdmin('usuarios'); limpiarFormularioUsuario(); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'usuarios' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Usuarios</button>
             </>
           )}
+        </div>
+
+        <div className="px-3 pt-3 pb-2 border-t border-slate-700">
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Color del sistema</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {COLORES_PRESET.map(c => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => cambiarColorMarca(c)}
+                title={c}
+                aria-label={`Usar color ${c}`}
+                className="w-6 h-6 rounded-full border-2 border-slate-600 hover:border-white transition"
+                style={{ backgroundColor: c }}
+              />
+            ))}
+            <label className="w-6 h-6 rounded-full border-2 border-dashed border-slate-500 hover:border-white transition flex items-center justify-center cursor-pointer relative overflow-hidden" title="Elegir otro color">
+              <input
+                type="color"
+                onChange={(e) => cambiarColorMarca(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                aria-label="Elegir color personalizado"
+              />
+              <span className="text-[10px] text-gray-400">+</span>
+            </label>
+          </div>
         </div>
 
         <div className="p-3 border-t border-slate-700">

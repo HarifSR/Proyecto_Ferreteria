@@ -65,7 +65,7 @@ export default function KardexPage({ productos, token }) {
                   </td>
                   <td className="p-3 text-gray-500">{m.referencia}</td>
                   <td className={`p-3 font-semibold ${m.cantidad >= 0 ? 'text-green-700' : 'text-red-700'}`}>{m.cantidad >= 0 ? '+' : ''}{m.cantidad}</td>
-                  <td className="p-3 text-gray-500">Q{formatQ(m.costoOPrecio)}</td>
+                  <td className="p-3 text-gray-500">{m.costoOPrecio == null ? '—' : `Q${formatQ(m.costoOPrecio)}`}</td>
                   <td className="p-3 font-bold text-gray-900">{m.saldo}</td>
                 </tr>
               ))}
