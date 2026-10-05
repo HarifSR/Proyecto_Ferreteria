@@ -10,6 +10,8 @@ import Sidebar from './components/Sidebar';
 import LoginScreen from './components/LoginScreen';
 import ProductoDetalleModal from './components/ProductoDetalleModal';
 import KardexPage from './pages/KardexPage';
+import BarraFiltros from './components/BarraFiltros';
+import { useHistorial } from './hooks/useHistorial';
 
 export default function App() {
   // --------------------------------------------------------
@@ -57,6 +59,9 @@ export default function App() {
 
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
   const [modoCatalogo, setModoCatalogo] = useState('producto'); // 'producto' | 'venta' | 'compra'
+
+  // Filtros y búsqueda del panel Historial (consulta al servidor solo cuando ese panel está visible)
+  const historial = useHistorial({ token, activo: subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'historial', esAdmin });
 
   // --------------------------------------------------------
   // ESTADO: Registro de Ventas
@@ -306,6 +311,7 @@ export default function App() {
         }
         cargarInventario();
         cargarReportesDashboard();
+        historial.recargar();
       } else {
         alertaError(data.error);
       }
@@ -351,6 +357,7 @@ export default function App() {
         alertaExito(data.mensaje);
         cargarInventario();
         cargarReportesDashboard();
+        historial.recargar();
       } else {
         alertaError(data.error);
       }
@@ -364,7 +371,7 @@ export default function App() {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) { cargarReportesDashboard(); }
+      if (res.ok) { cargarReportesDashboard(); historial.recargar(); }
     } catch (error) { alertaError("Error al actualizar la venta."); }
   };
 
@@ -435,6 +442,7 @@ export default function App() {
         }
         cargarInventario();
         cargarReportesDashboard();
+        historial.recargar();
       } else {
         alertaError(data.error);
       }
@@ -474,6 +482,7 @@ export default function App() {
         alertaExito(data.mensaje);
         cargarInventario();
         cargarReportesDashboard();
+        historial.recargar();
       } else {
         alertaError(data.error);
       }
@@ -1150,8 +1159,21 @@ export default function App() {
                   <h3 className="font-bold text-gray-900">Historial de Ventas</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Toca una fila para ver los productos. Las ventas a crédito se pueden marcar como cobradas.</p>
                 </div>
-                {reportes.historialVentas.length === 0 ? (
-                  <p className="text-gray-400 text-sm p-5">Aún no se ha registrado ninguna venta.</p>
+                <BarraFiltros
+                  busqueda={{ valor: historial.ventas.filtros.q, onChange: (v) => historial.ventas.actualizar('q', v), placeholder: 'Cliente, NIT o número de venta (ej. #12)', etiqueta: 'Buscar venta' }}
+                  selects={[
+                    { clave: 'tipo', etiqueta: 'Tipo', valor: historial.ventas.filtros.tipo, onChange: (v) => historial.ventas.actualizar('tipo', v), opciones: [{ valor: '', texto: 'Todos' }, { valor: 'Contado', texto: 'Contado' }, { valor: 'Crédito', texto: 'Crédito' }] },
+                    { clave: 'estado', etiqueta: 'Estado', valor: historial.ventas.filtros.estado, onChange: (v) => historial.ventas.actualizar('estado', v), opciones: [{ valor: '', texto: 'Todos' }, { valor: 'Pagado', texto: 'Pagado' }, { valor: 'Pendiente', texto: 'Pendiente' }] },
+                  ]}
+                  fechas={{ desde: historial.ventas.filtros.desde, hasta: historial.ventas.filtros.hasta, onDesde: (v) => historial.ventas.actualizar('desde', v), onHasta: (v) => historial.ventas.actualizar('hasta', v) }}
+                  hayFiltros={historial.ventas.hayFiltros}
+                  onLimpiar={historial.ventas.limpiar}
+                  error={historial.ventas.error}
+                  cargando={historial.ventas.cargando}
+                  resumen={`Mostrando ${historial.ventas.datos.resultados.length} de ${historial.ventas.datos.total} venta${historial.ventas.datos.total !== 1 ? 's' : ''}${historial.ventas.datos.sumaTotal != null ? ` · Total: Q${formatQ(historial.ventas.datos.sumaTotal)}` : ''}${historial.ventas.datos.total > historial.ventas.datos.resultados.length ? ' · Afina la búsqueda para ver las demás' : ''}`}
+                />
+                {historial.ventas.datos.resultados.length === 0 ? (
+                  <p className="text-gray-400 text-sm p-5">{historial.ventas.cargando ? 'Buscando...' : historial.ventas.error ? 'No se pudo completar la búsqueda.' : historial.ventas.hayFiltros ? 'Ninguna venta coincide con los filtros aplicados.' : 'Aún no se ha registrado ninguna venta.'}</p>
                 ) : (
                   <table className="w-full text-left text-sm">
                     <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
@@ -1167,7 +1189,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {reportes.historialVentas.map(venta => (
+                      {historial.ventas.datos.resultados.map(venta => (
                         <React.Fragment key={venta.id}>
                           <tr onClick={() => alternarDetalleVenta(venta.id)} className="hover:bg-gray-50 transition cursor-pointer">
                             <td className="p-4 sku text-gray-400">#{venta.id}</td>
@@ -1235,8 +1257,17 @@ export default function App() {
                 <div className="p-5 border-b">
                   <h3 className="font-bold text-gray-900">Historial de Compras</h3>
                 </div>
-                {reportes.historialCompras.length === 0 ? (
-                  <p className="text-gray-400 text-sm p-5">Aún no se ha registrado ninguna compra.</p>
+                <BarraFiltros
+                  busqueda={{ valor: historial.compras.filtros.q, onChange: (v) => historial.compras.actualizar('q', v), placeholder: 'Proveedor o número de compra (ej. #5)', etiqueta: 'Buscar compra' }}
+                  fechas={{ desde: historial.compras.filtros.desde, hasta: historial.compras.filtros.hasta, onDesde: (v) => historial.compras.actualizar('desde', v), onHasta: (v) => historial.compras.actualizar('hasta', v) }}
+                  hayFiltros={historial.compras.hayFiltros}
+                  onLimpiar={historial.compras.limpiar}
+                  error={historial.compras.error}
+                  cargando={historial.compras.cargando}
+                  resumen={`Mostrando ${historial.compras.datos.resultados.length} de ${historial.compras.datos.total} compra${historial.compras.datos.total !== 1 ? 's' : ''}${historial.compras.datos.sumaTotal != null ? ` · Total: Q${formatQ(historial.compras.datos.sumaTotal)}` : ''}${historial.compras.datos.total > historial.compras.datos.resultados.length ? ' · Afina la búsqueda para ver las demás' : ''}`}
+                />
+                {historial.compras.datos.resultados.length === 0 ? (
+                  <p className="text-gray-400 text-sm p-5">{historial.compras.cargando ? 'Buscando...' : historial.compras.error ? 'No se pudo completar la búsqueda.' : historial.compras.hayFiltros ? 'Ninguna compra coincide con los filtros aplicados.' : 'Aún no se ha registrado ninguna compra.'}</p>
                 ) : (
                   <table className="w-full text-left text-sm">
                     <thead className="bg-gray-100 text-xs font-bold border-b text-gray-600 uppercase tracking-wider">
@@ -1251,7 +1282,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {reportes.historialCompras.map(compra => (
+                      {historial.compras.datos.resultados.map(compra => (
                         <React.Fragment key={compra.id}>
                           <tr onClick={() => alternarDetalleCompra(compra.id)} className="hover:bg-gray-50 transition cursor-pointer">
                             <td className="p-4 sku text-gray-400">#{compra.id}</td>
