@@ -72,6 +72,7 @@ export default function App() {
   const [lineasVenta, setLineasVenta] = useState([]);
   const [ventaEditando, setVentaEditando] = useState(null);
   const [tipoVentaNueva, setTipoVentaNueva] = useState('Contado');
+  const [modoFacturacion, setModoFacturacion] = useState('cf'); // venta al contado: 'cf' (Consumidor Final) | 'facturar' (con nombre y NIT)
   const [nombreClienteVenta, setNombreClienteVenta] = useState('');
   const [direccionClienteVenta, setDireccionClienteVenta] = useState('');
   const [nitClienteVenta, setNitClienteVenta] = useState('');
@@ -283,6 +284,12 @@ export default function App() {
       alertaAdvertencia("Para una venta a crédito necesitas identificar al comprador (nombre).");
       return;
     }
+    if (tipoVentaNueva === 'Contado' && modoFacturacion === 'facturar' && (!nombreClienteVenta.trim() || !nitClienteVenta.trim())) {
+      alertaAdvertencia("Para facturar necesitas el nombre y el NIT del comprador. Si no pide factura con datos, elige Consumidor Final (C/F).");
+      return;
+    }
+    // Venta al contado como Consumidor Final: no se piden datos, se registra con NIT "C/F"
+    const esConsumidorFinal = tipoVentaNueva === 'Contado' && modoFacturacion === 'cf';
     try {
       const url = ventaEditando ? `${API_URL}/api/ventas/${ventaEditando}` : `${API_URL}/api/ventas`;
       const metodo = ventaEditando ? 'PUT' : 'POST';
@@ -292,9 +299,9 @@ export default function App() {
         body: JSON.stringify({
           items: lineasVenta,
           tipoVenta: tipoVentaNueva,
-          cliente: nombreClienteVenta.trim() || null,
-          clienteDireccion: direccionClienteVenta.trim() || null,
-          clienteNit: nitClienteVenta.trim() || null
+          cliente: esConsumidorFinal ? 'Consumidor Final' : (nombreClienteVenta.trim() || null),
+          clienteDireccion: esConsumidorFinal ? null : (direccionClienteVenta.trim() || null),
+          clienteNit: esConsumidorFinal ? 'C/F' : (nitClienteVenta.trim() || null)
         })
       });
       const data = await res.json();
@@ -302,6 +309,7 @@ export default function App() {
         alertaExito(data.mensaje);
         setLineasVenta([]);
         setTipoVentaNueva('Contado');
+        setModoFacturacion('cf');
         setNombreClienteVenta('');
         setDireccionClienteVenta('');
         setNitClienteVenta('');
@@ -330,9 +338,13 @@ export default function App() {
         cantidad: parseFloat(item.cantidad)
       })));
       setTipoVentaNueva(data.venta.tipo_venta);
-      setNombreClienteVenta(data.venta.cliente || '');
-      setDireccionClienteVenta(data.venta.cliente_direccion || '');
-      setNitClienteVenta(data.venta.cliente_nit || '');
+      // Una venta al contado sin datos (anterior a esta regla) o con NIT "C/F" se edita como Consumidor Final
+      const nitGuardado = (data.venta.cliente_nit || '').trim();
+      const eraConsumidorFinal = data.venta.tipo_venta !== 'Crédito' && (/^c\s*\/?\s*f$/i.test(nitGuardado) || (!data.venta.cliente && !nitGuardado));
+      setModoFacturacion(eraConsumidorFinal ? 'cf' : 'facturar');
+      setNombreClienteVenta(eraConsumidorFinal ? '' : (data.venta.cliente || ''));
+      setDireccionClienteVenta(eraConsumidorFinal ? '' : (data.venta.cliente_direccion || ''));
+      setNitClienteVenta(eraConsumidorFinal ? '' : (data.venta.cliente_nit || ''));
       setVentaEditando(venta.id);
       setModoCatalogo('venta');
       setSubSeccionAdmin('nuevo-producto');
@@ -343,6 +355,7 @@ export default function App() {
     setVentaEditando(null);
     setLineasVenta([]);
     setTipoVentaNueva('Contado');
+    setModoFacturacion('cf');
     setNombreClienteVenta('');
     setDireccionClienteVenta('');
     setNitClienteVenta('');
@@ -1021,17 +1034,38 @@ export default function App() {
                     </p>
                   </div>
 
+                  {tipoVentaNueva === 'Crédito' ? (
                   <div>
                     <p className="text-xs font-bold text-gray-500 mb-2">
-                      Datos del Comprador {tipoVentaNueva === 'Crédito' ? <span className="text-red-500">(obligatorio)</span> : <span className="text-gray-400 font-normal">(opcional)</span>}
+                      Datos del Comprador <span className="text-red-500">(obligatorio)</span>
                     </p>
                     <div className="space-y-2">
                       <input type="text" placeholder="Nombre" value={nombreClienteVenta} onChange={(e) => setNombreClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
                       <input type="text" placeholder="Dirección" value={direccionClienteVenta} onChange={(e) => setDireccionClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
                       <input type="text" placeholder="NIT" value={nitClienteVenta} onChange={(e) => setNitClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
                     </div>
-                    {tipoVentaNueva === 'Crédito' && <p className="text-[11px] text-gray-400 mt-1">Necesitamos identificar al comprador cuando se fía la mercadería.</p>}
+                    <p className="text-[11px] text-gray-400 mt-1">Necesitamos identificar al comprador cuando se fía la mercadería.</p>
                   </div>
+                  ) : (
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 mb-2">
+                      Facturación <span className="text-red-500">(obligatorio)</span>
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => setModoFacturacion('cf')} className={`py-2 rounded-lg text-sm font-semibold border transition ${modoFacturacion === 'cf' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Consumidor Final (C/F)</button>
+                      <button type="button" onClick={() => setModoFacturacion('facturar')} className={`py-2 rounded-lg text-sm font-semibold border transition ${modoFacturacion === 'facturar' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Facturar con datos</button>
+                    </div>
+                    {modoFacturacion === 'cf' ? (
+                      <p className="text-[11px] text-gray-400 mt-2">La venta se registrará a nombre de <span className="font-semibold">Consumidor Final</span> (NIT C/F).</p>
+                    ) : (
+                      <div className="space-y-2 mt-2">
+                        <input type="text" placeholder="Nombre o razón social *" value={nombreClienteVenta} onChange={(e) => setNombreClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                        <input type="text" placeholder="NIT *" value={nitClienteVenta} onChange={(e) => setNitClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                        <input type="text" placeholder="Dirección (opcional)" value={direccionClienteVenta} onChange={(e) => setDireccionClienteVenta(e.target.value)} className="w-full p-2 border rounded text-sm" />
+                      </div>
+                    )}
+                  </div>
+                  )}
 
                   <div className="pt-3 border-t font-black text-lg flex justify-between">
                     <span>Total:</span><span>Q{formatQ(calcularTotalVenta())}</span>
