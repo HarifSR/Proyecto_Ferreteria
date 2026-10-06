@@ -40,6 +40,9 @@ export default function Sidebar({
           )}
           <button onClick={() => { setSubSeccionAdmin('nuevo-producto'); setModoCatalogo('historial'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'historial' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Historial</button>
           <button onClick={() => { setSubSeccionAdmin('kardex'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'kardex' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Movimientos por Producto</button>
+          {usuarioActual?.rol === 'administrador' && (
+            <button onClick={() => { setSubSeccionAdmin('costos'); setMenuMovilAbierto(false); }} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm transition ${subSeccionAdmin === 'costos' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}>Variación de Costos</button>
+          )}
 
           {usuarioActual?.rol === 'administrador' && (
             <>

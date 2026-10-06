@@ -12,6 +12,10 @@ import ProductoDetalleModal from './components/ProductoDetalleModal';
 import KardexPage from './pages/KardexPage';
 import BarraFiltros from './components/BarraFiltros';
 import { useHistorial } from './hooks/useHistorial';
+import { useCostosProducto } from './hooks/useCostosProducto';
+import CostosPage from './pages/CostosPage';
+import AvisoCosto from './components/AvisoCosto';
+import { variacionPorcentual, costoEnPresentacion, superaUmbral, textoVariacion } from './utils/costos';
 
 export default function App() {
   // --------------------------------------------------------
@@ -62,6 +66,9 @@ export default function App() {
 
   // Filtros y búsqueda del panel Historial (consulta al servidor solo cuando ese panel está visible)
   const historial = useHistorial({ token, activo: subSeccionAdmin === 'nuevo-producto' && modoCatalogo === 'historial', esAdmin });
+
+  // Costos anteriores del producto que se está comprando (referencia y alerta de variación)
+  const costosCompra = useCostosProducto({ token });
 
   // --------------------------------------------------------
   // ESTADO: Registro de Ventas
@@ -402,7 +409,7 @@ export default function App() {
   // --------------------------------------------------------
   // REGISTRO DE COMPRAS (reabastecimiento: aumenta el stock)
   // --------------------------------------------------------
-  const agregarLineaCompra = () => {
+  const agregarLineaCompra = async () => {
     if (!productoCompraSel) { alertaAdvertencia("Selecciona un producto."); return; }
     const producto = productos.find(p => p.id === productoCompraSel);
     const cantidadIngresada = parseFloat(cantidadCompraSel);
@@ -419,6 +426,21 @@ export default function App() {
       costo = costoIngresado / producto.unidad_secundaria_cantidad;
     }
 
+    // Si el costo cambió mucho frente a la última compra, se pide confirmar (evita errores de digitación)
+    const costosPrevios = costosCompra.datos;
+    if (costosPrevios?.producto?.id === producto.id && costosPrevios.resumen) {
+      const pct = variacionPorcentual(costo, costosPrevios.resumen.ultimo); // ambos por unidad base
+      if (superaUmbral(pct)) {
+        const ultimoMostrado = costoEnPresentacion(costosPrevios.resumen.ultimo, producto, modoCompraSel);
+        const continuar = await confirmarAccion(
+          'El costo cambió mucho',
+          `El costo ingresado (Q${formatQ(costoIngresado)}) ${pct > 0 ? 'subió' : 'bajó'} ${Math.abs(pct).toFixed(1)}% frente a la última compra (Q${formatQ(ultimoMostrado)}). ¿Es correcto?`,
+          'Sí, es correcto'
+        );
+        if (!continuar) return;
+      }
+    }
+
     const existente = lineasCompra.find(l => l.producto_id === producto.id);
     if (existente) {
       setLineasCompra(lineasCompra.map(l => l.producto_id === producto.id ? { ...l, cantidad: l.cantidad + cantidad, costo_unitario: costo } : l));
@@ -429,6 +451,7 @@ export default function App() {
     setCantidadCompraSel('1');
     setCostoCompraSel('');
     setModoCompraSel('unidad');
+    costosCompra.limpiar();
   };
 
   const quitarLineaCompra = (producto_id) => setLineasCompra(lineasCompra.filter(l => l.producto_id !== producto_id));
@@ -1108,6 +1131,8 @@ export default function App() {
                       setProductoCompraSel(idSeleccionado);
                       setModoCompraSel('unidad');
                       setCostoCompraSel('');
+                      // Al editar una compra, no se compara contra sí misma
+                      costosCompra.consultar(idSeleccionado, { excluirCompra: compraEditando || '' });
                     }} className="w-full p-2 border rounded bg-gray-50 text-sm mt-1">
                       <option value="">Seleccionar producto</option>
                       {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} ({parseFloat(p.cantidad_stock)} uds)</option>)}
@@ -1150,6 +1175,15 @@ export default function App() {
                       </div>
                     );
                   })()}
+                  {productoCompraSel && (
+                    <AvisoCosto
+                      datos={costosCompra.datos}
+                      cargando={costosCompra.cargando}
+                      producto={productos.find(pr => pr.id === productoCompraSel)}
+                      modo={modoCompraSel}
+                      costoIngresado={costoCompraSel}
+                    />
+                  )}
                   <p className="text-[11px] text-gray-400">Ingresa el monto real que pagaste al proveedor por esta compra.</p>
 
                   {lineasCompra.length > 0 && (
@@ -1583,6 +1617,17 @@ export default function App() {
                     </button>
                   </form>
                 </div>
+              </div>
+            )}
+
+            {/* VARIACIÓN DE COSTOS DE COMPRA (solo administrador) */}
+            {subSeccionAdmin === 'costos' && esAdmin && (
+              <CostosPage productos={productos} token={token} />
+            )}
+            {subSeccionAdmin === 'costos' && !esAdmin && (
+              <div className="bg-white p-8 rounded-xl border shadow-sm text-center">
+                <p className="font-bold text-gray-800">Acceso restringido</p>
+                <p className="text-sm text-gray-400 mt-1">Solo un administrador puede ver los costos de compra.</p>
               </div>
             )}
 
